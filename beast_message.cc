@@ -2,7 +2,7 @@
 
 using namespace beastsplitter::message;
 
-MessageType messagetype_from_byte(uint8_t b)
+MessageType beastsplitter::message::messagetype_from_byte(std::uint8_t b)
 {
     switch (b) {
     case 0x31: return MessageType::MODE_AC;
@@ -13,7 +13,7 @@ MessageType messagetype_from_byte(uint8_t b)
     }
 }
 
-std::size_t messagetype_length(MessageType type)
+std::size_t beastsplitter::message::messagetype_length(MessageType type)
 {
     // return the expected number of data bytes for the message,
     // after any doubled 1As are removed.
