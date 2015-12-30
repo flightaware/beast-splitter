@@ -9,170 +9,122 @@
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/steady_timer.hpp>
 
-#include "beast_message.h"
+#include "modes_message.h"
+#include "beast_settings.h"
 
-namespace beastsplitter {
-    namespace output {
-        // Settings requested by the peer
-        struct Settings {
-            Settings()
-                : binary_format(true),
-                  filter_df11_df17_only(false),
-                  mlat_info(true),
-                  crc_disable(false),
-                  mask_df0_df4_df5(false),
-                  rts_handshake(true),
-                  fec_disable(false),
-                  modeac(false)
-            {}
+namespace beast {
+    inline std::uint8_t messagetype_to_byte(modes::MessageType t)
+    {
+        switch (t) {
+        case modes::MessageType::MODE_AC: return 0x31;
+        case modes::MessageType::MODE_S_SHORT: return 0x32;
+        case modes::MessageType::MODE_S_LONG: return 0x33;
+        case modes::MessageType::STATUS: return 0x34;
+        default: return 0;
+        }
+    }
 
-            bool radarcape;
-            bool binary_format;
-            bool filter_df11_df17_only;
-            bool mlat_info;
-            bool crc_disable;
-            bool mask_df0_df4_df5;
-            bool gps_timestamps;
-            bool rts_handshake;
-            bool fec_disable;
-            bool modeac;
+    class SocketOutput : public std::enable_shared_from_this<SocketOutput> {
+    public:
+        typedef std::shared_ptr<SocketOutput> pointer;
 
-            static Settings from_status_byte(std::uint8_t b) {
-                // always radarcape mode
-                Settings s;
-                s.radarcape = true;
-                s.binary_format = (b & 0x01) != 0;
-                s.filter_df11_df17_only = (b & 0x02) != 0;
-                s.mlat_info = (b & 0x04) != 0;
-                s.crc_disable = (b & 0x08) != 0;
-                s.gps_timestamps = (b & 0x10) != 0;
-                s.rts_handshake = (b & 0x20) != 0;
-                s.fec_disable = (b & 0x40) != 0;
-                s.modeac = (b & 0x80) != 0;
-                return s;
-            }
+        // factory method, this class must always be constructed via make_shared
+        static pointer create(boost::asio::io_service &service,
+                              boost::asio::ip::tcp::socket &&socket,
+                              const Settings &settings = Settings())
+        {
+            return pointer(new SocketOutput(service, std::move(socket), settings));
+        }
 
-            std::uint8_t to_status_byte() const {
-                // always radarcape mode
-                return
-                    (binary_format ? 0x01 : 0x00) |
-                    (filter_df11_df17_only ? 0x02 : 0x00) |
-                    (mlat_info ? 0x04 : 0x00) |
-                    (crc_disable ? 0x08 : 0x00) |
-                    (gps_timestamps ? 0x10 : 0x00) |
-                    (rts_handshake ? 0x20 : 0x00) |
-                    (fec_disable ? 0x40 : 0x00) |
-                    (modeac ? 0x80 : 0x00);
-            }
-        };
+        void start();
+        void close();
 
-        class SocketOutput : public std::enable_shared_from_this<SocketOutput> {
-        public:
-            typedef std::shared_ptr<SocketOutput> pointer;
+        void set_settings_notifier(std::function<void(const Settings&)> notifier) {
+            settings_notifier = notifier;
+        }
 
-            // factory method, this class must always be constructed via make_shared
-            static pointer create(boost::asio::io_service &service_,
-                                  boost::asio::ip::tcp::socket &socket_,
-                                  const Settings &settings_ = Settings())
-            {
-                return pointer(new SocketOutput(service_, socket_, settings_));
-            }
+        void set_close_notifier(std::function<void()> notifier) {
+            close_notifier = notifier;
+        }
 
-            void start();
-            void close();
+        void write(const modes::Message &message);
 
-            void set_settings_notifier(std::function<void(const Settings&)> notifier) {
-                settings_notifier = notifier;
-            }
+    private:
+        SocketOutput(boost::asio::io_service &service_,
+                     boost::asio::ip::tcp::socket &&socket_,
+                     const Settings &settings_);
 
-            void set_close_notifier(std::function<void()> notifier) {
-                close_notifier = notifier;
-            }
+        void read_commands();
+        void process_commands(std::vector<std::uint8_t> data);
+        void process_option_command(uint8_t option);
 
-            void dispatch_message(const beastsplitter::message::Message &message);
+        void handle_error(const boost::system::error_code &ec);            
 
-        private:
-            SocketOutput(boost::asio::io_service &service_,
-                         boost::asio::ip::tcp::socket &socket_,
-                         const Settings &settings_);
+        void write_message(modes::MessageType type,
+                           modes::TimestampType timestamp_type,
+                           std::uint64_t timestamp,
+                           std::uint8_t signal,
+                           const helpers::bytebuf &data);
 
-            void read_command();
-            void handle_command(std::vector<std::uint8_t> data);
-            void handle_option_command(uint8_t option);
-            void handle_error(const boost::system::error_code &ec);
-            void reset_status_message_timer(std::chrono::milliseconds delay);
-            void send_synthetic_status_message();
+        void write_binary(modes::MessageType type,
+                          std::uint64_t timestamp,
+                          std::uint8_t signal,
+                          const helpers::bytebuf &data);
+
+        void write_avrmlat(std::uint64_t timestamp,
+                           const helpers::bytebuf &data);
+
+        void write_avr(const helpers::bytebuf &data);
+
+        template <class T>
+        void write_bytes(std::shared_ptr<T> msg)
+        {
+            auto self(shared_from_this());
+            async_write(socket, boost::asio::buffer(*msg),
+                        [this,self,msg] (const boost::system::error_code &ec, size_t len) {
+                            if (ec)
+                                handle_error(ec);
+                        });
+        }
             
-            void handle_message(const beastsplitter::message::Message &message);
+        boost::asio::ip::tcp::socket socket;
 
-            void write_message(beastsplitter::message::MessageType type,
-                               std::uint64_t timestamp,
-                               std::uint8_t signal,
-                               const std::vector<std::uint8_t> &data);
+        enum class ParserState;
+        ParserState state;
 
-            void write_binary_message(beastsplitter::message::MessageType type,
-                                      std::uint64_t timestamp,
-                                      std::uint8_t signal,
-                                      const std::vector<std::uint8_t> &data);
+        Settings settings;
 
-            void write_avrmlat_message(std::uint64_t timestamp,
-                                       const std::vector<std::uint8_t> &data);
+        std::function<void(const Settings&)> settings_notifier;
+        std::function<void()> close_notifier;
+    };
 
-            void write_avr_message(const std::vector<std::uint8_t> &data);
-            
-            template <class T> void socket_write(std::shared_ptr<T> msg);
+    class SocketListener : public std::enable_shared_from_this<SocketListener> {
+    public:
+        typedef std::shared_ptr<SocketListener> pointer;
 
-            boost::asio::ip::tcp::socket socket;
-            boost::asio::steady_timer status_message_timer;
+        // factory method, this class must always be constructed via make_shared
+        static pointer create(boost::asio::io_service &service,
+                              boost::asio::ip::tcp::endpoint &endpoint,
+                              modes::FilterDistributor &distributor,
+                              const Settings &initial_settings)
+        {
+            return pointer(new SocketListener(service, endpoint, distributor, initial_settings));
+        }
 
-            enum class ParserState;
-            ParserState state;
-            bool receiving_gps_timestamps;
+        void start();
+        void close();
 
-            Settings settings;
-            std::uint64_t last_message_timestamp;
-            std::chrono::steady_clock::time_point last_message_clock;
+    private:
+        SocketListener(boost::asio::io_service &service_, boost::asio::ip::tcp::endpoint &endpoint_,
+                       modes::FilterDistributor &distributor, const Settings &initial_settings_);
+        
+        void accept_connection();
 
-            std::function<void(const Settings&)> settings_notifier;
-            std::function<void()> close_notifier;
-        };
-
-        class SocketListener : public std::enable_shared_from_this<SocketListener> {
-        public:
-            typedef std::shared_ptr<SocketListener> pointer;
-
-            // factory method, this class must always be constructed via make_shared
-            static pointer create(boost::asio::io_service &service,
-                                  boost::asio::ip::tcp::endpoint &endpoint,
-                                  const Settings &settings)
-            {
-                return pointer(new SocketListener(service, endpoint, settings));
-            }
-
-            void start();
-            void close();
-
-            void dispatch_message(const beastsplitter::message::Message &message);
-
-            void set_settings_notifier(std::function<void(const Settings&)> notifier) {
-                settings_notifier = notifier;
-            }
-
-
-        private:
-            SocketListener(boost::asio::io_service &service_, boost::asio::ip::tcp::endpoint &endpoint_,
-                           const Settings &settings_);
-
-            void accept_connection();
-
-            boost::asio::io_service &service;
-            boost::asio::ip::tcp::acceptor acceptor;
-            boost::asio::ip::tcp::socket socket;
-            Settings settings;
-            std::function<void(const Settings&)> settings_notifier;
-
-            std::vector< std::weak_ptr<SocketOutput> > connections;
-        };
+        boost::asio::io_service &service;
+        boost::asio::ip::tcp::acceptor acceptor;
+        boost::asio::ip::tcp::socket socket;
+        modes::FilterDistributor &distributor;
+        Settings initial_settings;
     };
 };
 

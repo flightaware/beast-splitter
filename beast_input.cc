@@ -3,29 +3,32 @@
 #include <boost/asio.hpp>
 
 #include "beast_input.h"
-#include "beast_message.h"
+#include "modes_message.h"
 
-using namespace beastsplitter::input;
-using namespace beastsplitter::message;
+using namespace beast;
 
 enum class SerialInput::ParserState { RESYNC, FIND_1A, TEST_TYPE, READ_1A, READ_TYPE, READ_DATA, READ_ESCAPED_1A };
+enum class SerialInput::ReceiverType { UNKNOWN, BEAST, RADARCAPE };
 
 SerialInput::SerialInput(boost::asio::io_service &service_,
                          const std::string &path_,
-                         ReceiverType fixed_receiver_type_,
-                         const Settings &settings_,
-                         unsigned int fixed_baud_rate_)
+                         unsigned int fixed_baud_rate_,
+                         const Settings &fixed_settings_,
+                         const modes::Filter &filter_)
     : path(path_),
       port(service_),      
       reconnect_timer(service_),
-      fixed_receiver_type(fixed_receiver_type_),
-      receiver_type(fixed_receiver_type_),
-      settings(settings_),
-    autobaud_interval(autobaud_base_interval),
+      receiver_type(ReceiverType::UNKNOWN),
+      fixed_settings(fixed_settings_),
+      filter(filter_),
+      receiving_gps_timestamps(false),
+      autobaud_interval(autobaud_base_interval),
     autobaud_timer(service_),
+    autodetect_timer(service_),
     good_sync(0),
     bad_sync(0),
-    readbuf(std::make_shared<bytebuf>(read_buffer_size)),
+    bytes_since_sync(0),
+    readbuf(std::make_shared<helpers::bytebuf>(read_buffer_size)),
     state(ParserState::RESYNC)
 {
     // set up autobaud
@@ -42,6 +45,8 @@ SerialInput::SerialInput(boost::asio::io_service &service_,
 
 void SerialInput::start(void)
 {
+    auto self(shared_from_this());
+
     std::cerr << "set baud rate " << *baud_rate << std::endl;
     try {
         if (port.is_open())
@@ -58,13 +63,31 @@ void SerialInput::start(void)
         return;
     }
 
+    // set receiver type
+    receiving_gps_timestamps = false;
+    autodetect_timer.cancel();
+    if (fixed_settings.radarcape.on())
+        receiver_type = ReceiverType::RADARCAPE;
+    else if (fixed_settings.radarcape.off())
+        receiver_type = ReceiverType::BEAST;
+    else {                
+        receiver_type = ReceiverType::UNKNOWN;
+        autodetect_timer.expires_from_now(radarcape_detect_interval);
+        autodetect_timer.async_wait([this,self] (const boost::system::error_code &ec) {
+                if (!ec) {
+                    std::cerr << "autodetect timer fired, assuming beast receiver" << std::endl;
+                    receiver_type = ReceiverType::BEAST;
+                    send_settings_message();
+                }
+            });
+    }
+
     send_settings_message();
     start_reading();
 
     if (autobaud_rates.size() > 1) {
         autobaud_timer.expires_from_now(autobaud_interval);
 
-        auto self(shared_from_this());
         autobaud_timer.async_wait([this,self] (const boost::system::error_code &ec) {
                 if (!ec) {
                     std::cerr << "autobaud timer fired" << std::endl;
@@ -76,21 +99,18 @@ void SerialInput::start(void)
 
 void SerialInput::send_settings_message()
 {
-    // Construct settings message
-    auto message = std::make_shared< std::array<char,7*3> >();
-    *message = {
-        0x1A, '1', 'C', // Beast binary format
-        0x1A, '1', (settings.filter_df11_df17_only ? 'D' : 'd'),
-        /* E (avr / avrmlat) unused in binary format */
-        0x1A, '1', (settings.crc_disable ? 'F' : 'f'),
-        0x1A, '1', ((settings.mask_df0_df4_df5 || receiver_type == ReceiverType::RADARCAPE) ? 'G' : 'g'),
-        0x1A, '1', 'H', // hardware handshake
-        0x1A, '1', (settings.fec_disable ? 'I' : 'i'),
-        0x1A, '1', (settings.modeac ? 'J' : 'j')
-    };
+    // apply fixed settings, let the filter set anything else that's not fixed
+    Settings settings = fixed_settings | Settings(filter);
 
-    // Make sure we keep the shared_ptr alive for long enough by binding it to the lambda
+    // always use our idea of the radarcape setting, and always use binary format
+    settings.radarcape = (receiver_type == ReceiverType::RADARCAPE);
+    settings.binary_format = true;
+
+    std::cerr << "sending settings message: " << settings.apply_defaults() << std::endl;
+
+    // send it
     auto self(shared_from_this());
+    auto message = std::make_shared<helpers::bytebuf>(settings.to_message());
     boost::asio::async_write(port, boost::asio::buffer(*message),
                              [this,self,message] (boost::system::error_code ec, std::size_t len) {
                                  if (ec)
@@ -98,18 +118,13 @@ void SerialInput::send_settings_message()
                              });
 }
 
-void SerialInput::change_settings(const Settings &newsettings)
+void SerialInput::set_filter(const modes::Filter &newfilter)
 {
-    bool changed =
-        (settings.filter_df11_df17_only != newsettings.filter_df11_df17_only) ||
-        (settings.crc_disable != newsettings.crc_disable) ||
-        (receiver_type != ReceiverType::RADARCAPE && settings.mask_df0_df4_df5 != newsettings.mask_df0_df4_df5) ||
-        (settings.fec_disable != newsettings.fec_disable) ||
-        (settings.modeac != newsettings.modeac);
-
-    settings = newsettings;
-    if (changed && port.is_open())
-        send_settings_message();
+    if (filter != newfilter) {
+        filter = newfilter;
+        if (port.is_open())
+            send_settings_message();
+    }
 }
 
 void SerialInput::handle_error(const boost::system::error_code &ec)
@@ -119,6 +134,7 @@ void SerialInput::handle_error(const boost::system::error_code &ec)
         return;
 
     autobaud_timer.cancel();
+    autodetect_timer.cancel();
     if (port.is_open()) {
         boost::system::error_code ignored;
         port.close(ignored);
@@ -130,9 +146,6 @@ void SerialInput::handle_error(const boost::system::error_code &ec)
         autobaud_interval = autobaud_base_interval;
         baud_rate = autobaud_rates.begin();
     }
-
-    // reset receiver type
-    receiver_type = fixed_receiver_type;
 
     // schedule reconnect.
     auto self(shared_from_this());
@@ -164,14 +177,14 @@ void SerialInput::advance_autobaud(void)
 void SerialInput::start_reading(void)
 {
     auto self(shared_from_this());
-    std::shared_ptr<bytebuf> buf;
+    std::shared_ptr<helpers::bytebuf> buf;
 
     buf.swap(readbuf);
     if (buf) {
         buf->resize(read_buffer_size);
     } else {
         std::cerr << "start_reading had to make a new buffer" << std::endl;
-        buf = std::make_shared<bytebuf>(read_buffer_size);
+        buf = std::make_shared<helpers::bytebuf>(read_buffer_size);
     }
 
     port.async_read_some(boost::asio::buffer(*buf),
@@ -210,12 +223,14 @@ void SerialInput::lost_sync(void)
     }
 }
 
-void SerialInput::parse_input(const bytebuf &buf)
+void SerialInput::parse_input(const helpers::bytebuf &buf)
 {
+    /*
     std::cerr << std::hex << std::setfill('0');
     for (auto ch : buf)
         std::cerr << std::setw(2) << (int)ch << " ";
     std::cerr << std::dec << std::endl;
+    */
 
     auto p = buf.begin();
 
@@ -277,7 +292,7 @@ void SerialInput::parse_input(const bytebuf &buf)
         case ParserState::READ_TYPE:
             // Expecting <typebyte> <data...>
             messagetype = messagetype_from_byte(*p);
-            if (messagetype == MessageType::INVALID) {
+            if (messagetype == modes::MessageType::INVALID) {
                 if (state == ParserState::READ_TYPE) {                    
                     std::cerr << "SYNC: READ_TYPE: wasn't a valid type" << std::endl;
                     lost_sync();
@@ -286,6 +301,7 @@ void SerialInput::parse_input(const bytebuf &buf)
                 }
             } else {
                 //std::cerr << std::hex << std::setfill('0') << std::setw(2) << (int)*p << std::dec << " ";
+                metadata.clear();
                 messagedata.clear();
                 state = ParserState::READ_DATA;
                 ++p;
@@ -295,7 +311,7 @@ void SerialInput::parse_input(const bytebuf &buf)
         case ParserState::READ_DATA:
             {
                 // Reading message contents
-                std::size_t msglen = messagetype_length(messagetype);
+                std::size_t msglen = modes::message_size(messagetype);
                 while (p != buf.end() && messagedata.size() < msglen) {
                     uint8_t b = *p++;
                     //std::cerr << std::hex << std::setfill('0') << std::setw(2) << (int)b << std::dec << " ";
@@ -315,11 +331,15 @@ void SerialInput::parse_input(const bytebuf &buf)
                         // valid 1A escape, consume it
                         //std::cerr << std::hex << std::setfill('0') << std::setw(2) << (int)*p << std::dec << " ";
                         ++p;
+
                     }
-
-                    messagedata.push_back(b);
+                    
+                    if (metadata.size() < 7)
+                        metadata.push_back(b);
+                    else
+                        messagedata.push_back(b);
                 }
-
+                
                 if (messagedata.size() >= msglen) {
                     // Done with this message.
                     dispatch_message();
@@ -329,28 +349,33 @@ void SerialInput::parse_input(const bytebuf &buf)
             break;
 
         case ParserState::READ_ESCAPED_1A:
-            // This happens if we see a 1A as the final
-            // byte of a read; READ_DATA cannot handle
-            // the escape immediately and sets state to
-            // READ_ESCAPED_1A to handle the first
-            // byte of the next read.
+            {
+                // This happens if we see a 1A as the final
+                // byte of a read; READ_DATA cannot handle
+                // the escape immediately and sets state to
+                // READ_ESCAPED_1A to handle the first
+                // byte of the next read.
 
-            if (*p != 0x1A) {
-                std::cerr << "SYNC: READ_ESCAPED_1A: bad 1A escape" << std::endl;
-                lost_sync();
-                break;
+                if (*p != 0x1A) {
+                    std::cerr << "SYNC: READ_ESCAPED_1A: bad 1A escape" << std::endl;
+                    lost_sync();
+                    break;
+                }
+
+                // valid 1A escape
+                //std::cerr << std::hex << std::setfill('0') << std::setw(2) << (int)*p << std::dec << " ";
+                if (metadata.size() < 7)
+                    metadata.push_back(*p++);
+                else
+                    messagedata.push_back(*p++);
+
+                if (messagedata.size() >= modes::message_size(messagetype)) {
+                    dispatch_message();
+                    state = ParserState::READ_1A;
+                } else {
+                    state = ParserState::READ_DATA;
+                }
             }
-
-            // valid 1A escape
-            //std::cerr << std::hex << std::setfill('0') << std::setw(2) << (int)*p << std::dec << " ";
-            messagedata.push_back(*p++);
-            if (messagedata.size() >= messagetype_length(messagetype)) {
-                dispatch_message();
-                state = ParserState::READ_1A;
-            } else {
-                state = ParserState::READ_DATA;
-            }
-
             break;
             
         default:
@@ -385,10 +410,17 @@ void SerialInput::dispatch_message()
 
     // if we have not detected the receiver type, watch for radarcape status messages
     // which is the only way to distinguish Beast vs Radarcape.
-    if (receiver_type == ReceiverType::AUTO && messagetype == MessageType::STATUS) {
-        std::cerr << "detected radarcape" << std::endl;
-        receiver_type = ReceiverType::RADARCAPE;
-        send_settings_message(); // for the g/G setting
+    if (receiver_type == ReceiverType::UNKNOWN) {
+        if (messagetype == modes::MessageType::STATUS) {
+            std::cerr << "detected radarcape" << std::endl;
+            receiver_type = ReceiverType::RADARCAPE;
+            autodetect_timer.cancel();            
+            receiving_gps_timestamps = Settings(messagedata[0]).gps_timestamps.on();
+            send_settings_message(); // for the g/G setting
+        } else {
+            // Autodetecting, but can't work out what it is yet, swallow messages for a while
+            return;
+        }
     }
 
     if (!message_notifier)
@@ -396,23 +428,20 @@ void SerialInput::dispatch_message()
 
     // basic decoding, then pass it on.
     std::uint64_t timestamp =
-        ((std::uint64_t)messagedata[0] << 40) |
-        ((std::uint64_t)messagedata[1] << 32) |
-        ((std::uint64_t)messagedata[2] << 24) | 
-        ((std::uint64_t)messagedata[3] << 16) |
-        ((std::uint64_t)messagedata[4] << 8) |
-        ((std::uint64_t)messagedata[5]);
+        ((std::uint64_t)metadata[0] << 40) |
+        ((std::uint64_t)metadata[1] << 32) |
+        ((std::uint64_t)metadata[2] << 24) | 
+        ((std::uint64_t)metadata[3] << 16) |
+        ((std::uint64_t)metadata[4] << 8) |
+        ((std::uint64_t)metadata[5]);
 
-    std::uint8_t signal =
-        messagedata[6];
+    std::uint8_t signal = metadata[6];
 
     // dispatch it
-    Message msg = {
-        messagetype,
-        timestamp,
-        signal,
-        bytebuf(messagedata.begin() + 7, messagedata.end())
-    };
-
-    message_notifier(msg);
+    message_notifier(modes::Message(messagetype,
+                                    receiving_gps_timestamps ? modes::TimestampType::GPS : modes::TimestampType::TWELVEMEG,
+                                    timestamp,
+                                    signal,
+                                    std::move(messagedata)));
+    messagedata.clear(); // make sure we leave it in a valid state after moving
 }
