@@ -408,19 +408,21 @@ void SerialInput::dispatch_message()
         return;
     }
 
-    // if we have not detected the receiver type, watch for radarcape status messages
-    // which is the only way to distinguish Beast vs Radarcape.
-    if (receiver_type == ReceiverType::UNKNOWN) {
-        if (messagetype == modes::MessageType::STATUS) {
+    // monitor status messages for GPS timestamp bit
+    // and for radarcape autodetection
+    if (messagetype == modes::MessageType::STATUS) {
+        receiving_gps_timestamps = Settings(messagedata[0]).gps_timestamps.on();
+        if (receiver_type == ReceiverType::UNKNOWN) {
             std::cerr << "detected radarcape" << std::endl;
             receiver_type = ReceiverType::RADARCAPE;
             autodetect_timer.cancel();            
-            receiving_gps_timestamps = Settings(messagedata[0]).gps_timestamps.on();
             send_settings_message(); // for the g/G setting
-        } else {
-            // Autodetecting, but can't work out what it is yet, swallow messages for a while
-            return;
         }
+    }
+
+    if (receiver_type == ReceiverType::UNKNOWN) {
+        // still trying to autodetect, swallow messages
+        return;
     }
 
     if (!message_notifier)
