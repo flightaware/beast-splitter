@@ -2,15 +2,19 @@
 
 #include <boost/asio.hpp>
 #include <boost/asio/steady_timer.hpp>
+#include <boost/asio/ip/v6_only.hpp>
 
 #include "beast_output.h"
 #include "modes_message.h"
 
+namespace asio = boost::asio;
+using boost::asio::ip::tcp;
+
 namespace beast {
     enum class SocketOutput::ParserState { FIND_1A, READ_1, READ_OPTION };
 
-    SocketOutput::SocketOutput(boost::asio::io_service &service_,
-                               boost::asio::ip::tcp::socket &&socket_,
+    SocketOutput::SocketOutput(asio::io_service &service_,
+                               tcp::socket &&socket_,
                                const Settings &settings_)
         : socket(std::move(socket_)),
           state(ParserState::FIND_1A),
@@ -29,7 +33,7 @@ namespace beast {
         auto self(shared_from_this());
         auto buf = std::make_shared< std::vector<std::uint8_t> >(512);    
 
-        async_read(socket, boost::asio::buffer(*buf),
+        async_read(socket, asio::buffer(*buf),
                    [this,self,buf] (const boost::system::error_code &ec, std::size_t len) {
                        if (ec) {
                            handle_error(ec);
@@ -119,9 +123,11 @@ namespace beast {
             return; // we are shut down
 
         if (message.type() == modes::MessageType::STATUS) {
-            // put the connection-specific dipswitch settings in
+            // local connection settings override the upstream data
+            Settings used = settings | Settings(message.data()[0]);
+
             auto copy = message.data();
-            copy[0] = settings.to_status_byte();
+            copy[0] = used.to_status_byte();
             write_message(message.type(),
                           message.timestamp_type(),
                           message.timestamp(),
@@ -142,13 +148,13 @@ namespace beast {
                                      std::uint8_t signal,
                                      const helpers::bytebuf &data)
     {
-        if (timestamp_type == modes::TimestampType::TWELVEMEG && settings.gps_timestamps) {
+        if (timestamp_type == modes::TimestampType::TWELVEMEG && settings.gps_timestamps.on()) {
             // scale 12MHz to GPS
             std::uint64_t ns = timestamp * 1000ULL / 12ULL;
             std::uint64_t seconds = (ns / 1000000000ULL) % 86400;
             std::uint64_t nanos = ns % 1000000000ULL;
             timestamp = (seconds << 30) | nanos;
-        } else if (timestamp_type == modes::TimestampType::GPS && !settings.gps_timestamps) {
+        } else if (timestamp_type == modes::TimestampType::GPS && settings.gps_timestamps.off()) {
             // scale GPS to 12MHz
             std::uint64_t seconds = timestamp >> 30;
             std::uint64_t nanos = timestamp & 0x3FFFFFFF;
@@ -156,12 +162,17 @@ namespace beast {
             timestamp = ns * 12ULL / 1000ULL;
         }
 
-        if (settings.binary_format)
-            write_binary(type, timestamp, signal, data);
-        else if (settings.avrmlat)
-            write_avrmlat(timestamp, data);
-        else
-            write_avr(data);
+        // if gps_timestamps is DONTCARE, we just use whatever is provided
+
+        if (settings.binary_format) {
+            write_binary(type, timestamp, signal, data);        
+        } else if (settings.avrmlat) {
+            if (type != modes::MessageType::STATUS)
+                write_avrmlat(timestamp, data);
+        } else {
+            if (type != modes::MessageType::STATUS)
+                write_avr(data);
+        }
     }
 
     static void push_back_escape(std::vector<std::uint8_t> &v, std::uint8_t b)
@@ -255,12 +266,13 @@ namespace beast {
 
     //////////////
 
-    SocketListener::SocketListener(boost::asio::io_service &service_,
-                                   boost::asio::ip::tcp::endpoint &endpoint_,
+    SocketListener::SocketListener(asio::io_service &service_,
+                                   const tcp::endpoint &endpoint_,
                                    modes::FilterDistributor &distributor_,
                                    const Settings &initial_settings_)
         : service(service_),
-          acceptor(service_, endpoint_),
+          acceptor(service_),
+          endpoint(endpoint_),
           socket(service_),
           distributor(distributor_),
           initial_settings(initial_settings_)
@@ -269,6 +281,16 @@ namespace beast {
 
     void SocketListener::start()
     {
+        acceptor.open(endpoint.protocol());
+        acceptor.set_option(asio::socket_base::reuse_address(true));
+        acceptor.set_option(tcp::acceptor::reuse_address(true));
+
+        // We are v6 aware and bind separately to v4 and v6 addresses
+        if (endpoint.protocol() == tcp::v6())
+            acceptor.set_option(asio::ip::v6_only(true));
+
+        acceptor.bind(endpoint);
+        acceptor.listen();
         accept_connection();
     }
 

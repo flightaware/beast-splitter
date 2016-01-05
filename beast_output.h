@@ -104,7 +104,7 @@ namespace beast {
 
         // factory method, this class must always be constructed via make_shared
         static pointer create(boost::asio::io_service &service,
-                              boost::asio::ip::tcp::endpoint &endpoint,
+                              const boost::asio::ip::tcp::endpoint &endpoint,
                               modes::FilterDistributor &distributor,
                               const Settings &initial_settings)
         {
@@ -115,13 +115,14 @@ namespace beast {
         void close();
 
     private:
-        SocketListener(boost::asio::io_service &service_, boost::asio::ip::tcp::endpoint &endpoint_,
+        SocketListener(boost::asio::io_service &service_, const boost::asio::ip::tcp::endpoint &endpoint_,
                        modes::FilterDistributor &distributor, const Settings &initial_settings_);
         
         void accept_connection();
 
         boost::asio::io_service &service;
         boost::asio::ip::tcp::acceptor acceptor;
+        boost::asio::ip::tcp::endpoint endpoint;
         boost::asio::ip::tcp::socket socket;
         modes::FilterDistributor &distributor;
         Settings initial_settings;

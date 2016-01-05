@@ -1,6 +1,6 @@
 CXX=g++
 CXXFLAGS=-std=c++11 -Wall -Werror -O -g
-LIBS=-lboost_system -lpthread
+LIBS=-lboost_system -lboost_program_options -lboost_regex -lpthread
 
 all: testharness
 

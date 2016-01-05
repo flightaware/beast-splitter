@@ -116,7 +116,7 @@ namespace beast {
         f.receive_modeac = modeac_enable;
         f.receive_bad_crc = crc_disable;
         f.receive_fec = !fec_disable;
-        f.receive_status = radarcape;
+        f.receive_status = !radarcape.off();
         f.receive_gps_timestamps = gps_timestamps;
 
         return f;
