@@ -123,16 +123,16 @@ namespace beast {
 
         Settings operator|(const Settings &other) const;
 
-        tristate<false, 'r', 'R'> radarcape;        // true if these are radarcape settings, false for beast-classic
+        tristate<false, 'B', 'R'> radarcape;        // (B)east vs (R)adarcape
         tristate<true,  'c', 'C'> binary_format;    // off=AVR, on=binary
         tristate<false, 'd', 'D'> filter_11_17_18;  // off=no filter, on=send only DF11/17/18
         tristate<true,  'e', 'E'> avrmlat;          // off=no timestamps in AVR, on=include timestamps in AVR
         tristate<false, 'f', 'F'> crc_disable;      // off=normal CRC checks, on=no CRC checks
-        tristate<false, 'b', 'B'> filter_0_4_5;     // off=no filter, on=don't send DF0/4/5 (Beast only)
         tristate<true,  'g', 'G'> gps_timestamps;   // off=12MHz timestamps, on=GPS timestamps (Radarcape only)
         tristate<true,  'h', 'H'> rts_handshake;    // off=no flow control, on=RTS/CTS flow control
         tristate<false, 'i', 'I'> fec_disable;      // off=1-bit FEC enabled, on=no FEC
         tristate<false, 'j', 'J'> modeac_enable;    // off=no Mode A/C, on=send Mode A/C
+        tristate<false, 'k', 'K'> filter_0_4_5;     // off=no filter, on=don't send DF0/4/5 (Beast only)
     };
 
     template <bool D,char OFF,char ON>

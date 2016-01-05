@@ -73,7 +73,7 @@ namespace beast {
 
         static const boost::regex r("[cdefghijbrCDEFGHIJBR]*");
         if (boost::regex_match(s, r)) {
-            boost::any_cast<beast::Settings>(v) = beast::Settings(s);
+            v = boost::any(beast::Settings(s));
         } else {
             throw po::validation_error(po::validation_error::invalid_option_value);
         }

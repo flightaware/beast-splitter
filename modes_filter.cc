@@ -80,8 +80,6 @@ namespace modes {
     FilterDistributor::handle FilterDistributor::add_client(MessageNotifier message_notifier,
                                                             const Filter &initial_filter)
     {
-        std::cerr << "add_client(" << initial_filter << ")" << std::endl;
-
         handle h = next_handle++;
         clients[h] = {
             message_notifier,
@@ -95,8 +93,6 @@ namespace modes {
     void FilterDistributor::update_client_filter(handle h,
                                                  const Filter &new_filter)
     {
-        std::cerr << "update_client_filter(" << new_filter << ")" << std::endl;
-
         auto i = clients.find(h);
         if (i == clients.end())
             return;
@@ -114,8 +110,6 @@ namespace modes {
 
     void FilterDistributor::remove_client(handle h)
     {
-        std::cerr << "remove_client" << std::endl;
-
         auto i = clients.find(h);
         if (i == clients.end())
             return;

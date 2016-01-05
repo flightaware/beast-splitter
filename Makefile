@@ -2,10 +2,10 @@ CXX=g++
 CXXFLAGS=-std=c++11 -Wall -Werror -O -g
 LIBS=-lboost_system -lboost_program_options -lboost_regex -lpthread
 
-all: testharness
+all: beast-splitter
 
-testharness: modes_message.o modes_filter.o beast_settings.o beast_input.o beast_output.o testharness.o
+beast-splitter: modes_message.o modes_filter.o beast_settings.o beast_input.o beast_output.o splitter_main.o
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) $^ -o $@ $(LIBS)
 
 clean:
-	rm -f *.o testharness
+	rm -f *.o beast-splitter

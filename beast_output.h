@@ -88,6 +88,7 @@ namespace beast {
         }
             
         boost::asio::ip::tcp::socket socket;
+        boost::asio::ip::tcp::endpoint peer;
 
         enum class ParserState;
         ParserState state;
@@ -124,6 +125,7 @@ namespace beast {
         boost::asio::ip::tcp::acceptor acceptor;
         boost::asio::ip::tcp::endpoint endpoint;
         boost::asio::ip::tcp::socket socket;
+        boost::asio::ip::tcp::endpoint peer;
         modes::FilterDistributor &distributor;
         Settings initial_settings;
     };

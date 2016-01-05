@@ -28,6 +28,7 @@ SerialInput::SerialInput(boost::asio::io_service &service_,
     good_sync(0),
     bad_sync(0),
     bytes_since_sync(0),
+    first_message(true),
     readbuf(std::make_shared<helpers::bytebuf>(read_buffer_size)),
     state(ParserState::RESYNC)
 {
@@ -35,19 +36,25 @@ SerialInput::SerialInput(boost::asio::io_service &service_,
     if (fixed_baud_rate_ == 0) {
         autobauding = true;
         autobaud_rates.assign(autobaud_standard_rates.begin(), autobaud_standard_rates.end());
+        autobaud_rate = autobaud_rates.begin();
+        baud_rate = *autobaud_rate;
     } else {
         autobauding = false;
-        autobaud_rates.push_back(fixed_baud_rate_);
+        baud_rate = fixed_baud_rate_;
     }
 
-    baud_rate = autobaud_rates.begin();
 }
 
 void SerialInput::start(void)
 {
     auto self(shared_from_this());
 
-    std::cerr << "set baud rate " << *baud_rate << std::endl;
+    first_message = true;
+    if (autobauding)
+        std::cerr << path << ": trying port at " << baud_rate << "bps" << std::endl;
+    else
+        std::cerr << path << ": opening port at " << baud_rate << "bps" << std::endl;
+    
     try {
         if (port.is_open())
             port.cancel();
@@ -57,7 +64,7 @@ void SerialInput::start(void)
         port.set_option(boost::asio::serial_port_base::stop_bits(boost::asio::serial_port_base::stop_bits::one));
         port.set_option(boost::asio::serial_port_base::parity(boost::asio::serial_port_base::parity::none));
         port.set_option(boost::asio::serial_port_base::flow_control(boost::asio::serial_port_base::flow_control::hardware));
-        port.set_option(boost::asio::serial_port_base::baud_rate(*baud_rate));
+        port.set_option(boost::asio::serial_port_base::baud_rate(baud_rate));
     } catch (const boost::system::system_error &err) {
         handle_error(err.code());
         return;
@@ -75,7 +82,6 @@ void SerialInput::start(void)
         autodetect_timer.expires_from_now(radarcape_detect_interval);
         autodetect_timer.async_wait([this,self] (const boost::system::error_code &ec) {
                 if (!ec) {
-                    std::cerr << "autodetect timer fired, assuming beast receiver" << std::endl;
                     receiver_type = ReceiverType::BEAST;
                     send_settings_message();
                 }
@@ -90,7 +96,6 @@ void SerialInput::start(void)
 
         autobaud_timer.async_wait([this,self] (const boost::system::error_code &ec) {
                 if (!ec) {
-                    std::cerr << "autobaud timer fired" << std::endl;
                     advance_autobaud();
                 }
             });
@@ -102,11 +107,12 @@ void SerialInput::send_settings_message()
     // apply fixed settings, let the filter set anything else that's not fixed
     Settings settings = fixed_settings | Settings(filter);
 
-    // always use our idea of the radarcape setting, and always use binary format
+    // some hardcoded things we expect
     settings.radarcape = (receiver_type == ReceiverType::RADARCAPE);
     settings.binary_format = true;
+    settings.rts_handshake = true;
 
-    std::cerr << "sending settings message: " << settings.apply_defaults() << std::endl;
+    std::cerr << path << ": configured with settings: " << settings.apply_defaults() << std::endl;
 
     // send it
     auto self(shared_from_this());
@@ -129,9 +135,10 @@ void SerialInput::set_filter(const modes::Filter &newfilter)
 
 void SerialInput::handle_error(const boost::system::error_code &ec)
 {
-    std::cerr << "got error " << ec.message() << std::endl;
     if (ec == boost::asio::error::operation_aborted)
         return;
+
+    std::cerr << path << ": i/o error: " << ec.message() << std::endl;
 
     autobaud_timer.cancel();
     autodetect_timer.cancel();
@@ -144,7 +151,8 @@ void SerialInput::handle_error(const boost::system::error_code &ec)
     if (!autobaud_rates.empty()) {
         autobauding = true;
         autobaud_interval = autobaud_base_interval;
-        baud_rate = autobaud_rates.begin();
+        autobaud_rate = autobaud_rates.begin();
+        baud_rate = *autobaud_rate;
     }
 
     // schedule reconnect.
@@ -152,7 +160,6 @@ void SerialInput::handle_error(const boost::system::error_code &ec)
     reconnect_timer.expires_from_now(reconnect_interval);
     reconnect_timer.async_wait([this,self] (const boost::system::error_code &ec) {
             if (!ec) {
-                std::cerr << "reconnect timer fired" << std::endl;
                 start();
             }
         });    
@@ -163,14 +170,13 @@ void SerialInput::advance_autobaud(void)
     if (!autobauding)
         return;
 
-    if (++baud_rate == autobaud_rates.end()) {
+    if (++autobaud_rate == autobaud_rates.end()) {
         // Ran out of rates to try. Increase the interval and start again
-        baud_rate = autobaud_rates.begin();
         autobaud_interval = std::min(autobaud_max_interval, autobaud_interval * 2);
+        autobaud_rate = autobaud_rates.begin();
     }
 
-    std::cerr << "advanced autobaud to try " << *baud_rate << std::endl;
-
+    baud_rate = *autobaud_rate;
     start();
 }
 
@@ -183,7 +189,6 @@ void SerialInput::start_reading(void)
     if (buf) {
         buf->resize(read_buffer_size);
     } else {
-        std::cerr << "start_reading had to make a new buffer" << std::endl;
         buf = std::make_shared<helpers::bytebuf>(read_buffer_size);
     }
 
@@ -191,7 +196,6 @@ void SerialInput::start_reading(void)
                          [this,self,buf] (const boost::system::error_code &ec, std::size_t len) {
                              if (ec) {
                                  readbuf = buf;
-                                 std::cerr << "async_read_some handler stopped with an error" << std::endl;
                                  handle_error(ec);
                              } else {
                                  buf->resize(len);
@@ -214,24 +218,23 @@ void SerialInput::lost_sync(void)
     good_sync = 0;
     bytes_since_sync = 0;
 
-    if (!autobauding && autobaud_rates.size() > 1 && bad_sync > 50) {
-        std::cerr << "restart autobauding" << std::endl;
-        // We picked a rate, but it's not really working, let's
-        // restart autobauding.
-        autobauding = true;
-        advance_autobaud();
+    if (!autobauding && bad_sync > 50) {
+        if (!autobaud_rates.empty()) {
+            // We did autobaud and picked a rate, but it's not really working, let's
+            // restart autobauding.
+            std::cerr << path << ": too many framing errors seen, restarting autobauding" << std::endl;
+            autobauding = true;
+            first_message = true;
+            advance_autobaud();
+        } else {
+            std::cerr << path << ": many framing errors seen, is the baud rate (" << baud_rate << " bps) correct?" << std::endl;
+            bad_sync = 0;
+        }
     }
 }
 
 void SerialInput::parse_input(const helpers::bytebuf &buf)
 {
-    /*
-    std::cerr << std::hex << std::setfill('0');
-    for (auto ch : buf)
-        std::cerr << std::setw(2) << (int)ch << " ";
-    std::cerr << std::dec << std::endl;
-    */
-
     auto p = buf.begin();
 
     while (p != buf.end()) {
@@ -250,8 +253,6 @@ void SerialInput::parse_input(const helpers::bytebuf &buf)
                     lost_sync();
                     break;
                 }
-
-                //std::cerr << std::hex << std::setfill('0') << std::setw(2) << (int)*p << std::dec << " ";
             }
             break;
 
@@ -259,7 +260,6 @@ void SerialInput::parse_input(const helpers::bytebuf &buf)
             // Scanning for <1A> <typebyte> <data...>
             for (; p != buf.end(); ++p) {
                 if (*p == 0x1A) {
-                    //std::cerr << std::hex << std::setfill('0') << std::setw(2) << (int)*p << std::dec << " ";
                     state = ParserState::TEST_TYPE;
                     ++p;
                     break;
@@ -271,19 +271,15 @@ void SerialInput::parse_input(const helpers::bytebuf &buf)
                     lost_sync();
                     break;
                 }
-
-                //std::cerr << std::hex << std::setfill('0') << std::setw(2) << (int)*p << std::dec << " ";
             }
             break;
 
         case ParserState::READ_1A:
             // Expecting <1A> <typebyte> <data...>
             if (*p == 0x1A) {
-                //std::cerr << std::hex << std::setfill('0') << std::setw(2) << (int)*p << std::dec << " ";
                 state = ParserState::READ_TYPE;
                 ++p;
             } else {
-                std::cerr << "SYNC: READ_1A: wasn't 1A" << std::endl;
                 lost_sync();
             }
             break;
@@ -294,13 +290,11 @@ void SerialInput::parse_input(const helpers::bytebuf &buf)
             messagetype = messagetype_from_byte(*p);
             if (messagetype == modes::MessageType::INVALID) {
                 if (state == ParserState::READ_TYPE) {                    
-                    std::cerr << "SYNC: READ_TYPE: wasn't a valid type" << std::endl;
                     lost_sync();
-                } else { // TEST_TYPE            
+                } else { // TEST_TYPE, we didn't have sync anyway so don't lose sync
                     state = ParserState::FIND_1A;
                 }
             } else {
-                //std::cerr << std::hex << std::setfill('0') << std::setw(2) << (int)*p << std::dec << " ";
                 metadata.clear();
                 messagedata.clear();
                 state = ParserState::READ_DATA;
@@ -314,7 +308,6 @@ void SerialInput::parse_input(const helpers::bytebuf &buf)
                 std::size_t msglen = modes::message_size(messagetype);
                 while (p != buf.end() && messagedata.size() < msglen) {
                     uint8_t b = *p++;
-                    //std::cerr << std::hex << std::setfill('0') << std::setw(2) << (int)b << std::dec << " ";
                     if (b == 0x1A) {
                         if (p == buf.end()) {
                             // Can't handle it this time around.
@@ -323,13 +316,11 @@ void SerialInput::parse_input(const helpers::bytebuf &buf)
                         }
 
                         if (*p != 0x1A) {
-                            std::cerr << "SYNC: READ_DATA: bad 1A escape" << std::endl;
                             lost_sync();
                             break;
                         }
 
                         // valid 1A escape, consume it
-                        //std::cerr << std::hex << std::setfill('0') << std::setw(2) << (int)*p << std::dec << " ";
                         ++p;
 
                     }
@@ -357,13 +348,11 @@ void SerialInput::parse_input(const helpers::bytebuf &buf)
                 // byte of the next read.
 
                 if (*p != 0x1A) {
-                    std::cerr << "SYNC: READ_ESCAPED_1A: bad 1A escape" << std::endl;
                     lost_sync();
                     break;
                 }
 
                 // valid 1A escape
-                //std::cerr << std::hex << std::setfill('0') << std::setw(2) << (int)*p << std::dec << " ";
                 if (metadata.size() < 7)
                     metadata.push_back(*p++);
                 else
@@ -395,7 +384,6 @@ void SerialInput::dispatch_message()
 
         if (autobauding) {
             // We are autobauding and this rate looks good.
-            std::cerr << "autobaud succeeded, rate " << *baud_rate << std::endl;
             autobauding = false;
             bad_sync = 0;
             autobaud_timer.cancel();
@@ -404,7 +392,6 @@ void SerialInput::dispatch_message()
 
     // if we are not convinced of this rate, don't process messages yet
     if (autobauding) {
-        std::cerr << "x";
         return;
     }
 
@@ -413,7 +400,6 @@ void SerialInput::dispatch_message()
     if (messagetype == modes::MessageType::STATUS) {
         receiving_gps_timestamps = Settings(messagedata[0]).gps_timestamps.on();
         if (receiver_type == ReceiverType::UNKNOWN) {
-            std::cerr << "detected radarcape" << std::endl;
             receiver_type = ReceiverType::RADARCAPE;
             autodetect_timer.cancel();            
             send_settings_message(); // for the g/G setting
@@ -423,6 +409,13 @@ void SerialInput::dispatch_message()
     if (receiver_type == ReceiverType::UNKNOWN) {
         // still trying to autodetect, swallow messages
         return;
+    }
+
+    if (first_message) {
+        first_message = false;
+        std::cerr << path << ": connected to a "
+                  << (receiver_type == ReceiverType::RADARCAPE ? "Radarcape" : "Beast") << "-style receiver at "
+                  << baud_rate << " bps" << std::endl;
     }
 
     if (!message_notifier)

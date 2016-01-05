@@ -17,6 +17,7 @@ namespace beast {
                                tcp::socket &&socket_,
                                const Settings &settings_)
         : socket(std::move(socket_)),
+          peer(socket.remote_endpoint()),
           state(ParserState::FIND_1A),
           settings(settings_)
     {
@@ -24,7 +25,6 @@ namespace beast {
 
     void SocketOutput::start()
     {
-        std::cerr << "output: start" << std::endl;
         read_commands();
     }
 
@@ -38,7 +38,6 @@ namespace beast {
                        if (ec) {
                            handle_error(ec);
                        } else {
-                           std::cerr << "output: handling commands" << std::endl;
                            process_commands(*buf);
                            read_commands();
                        }
@@ -113,6 +112,7 @@ namespace beast {
             return;
         }
 
+        std::cerr << peer << ": settings changed to " << settings << std::endl;
         if (settings_notifier)
             settings_notifier(settings);
     }
@@ -148,13 +148,15 @@ namespace beast {
                                      std::uint8_t signal,
                                      const helpers::bytebuf &data)
     {
-        if (timestamp_type == modes::TimestampType::TWELVEMEG && settings.gps_timestamps.on()) {
-            // scale 12MHz to GPS
+        if (timestamp_type == modes::TimestampType::TWELVEMEG && !settings.radarcape.off() && settings.gps_timestamps.on()) {
+            // GPS timestamps were explicitly requested
+            // scale 12MHz to pseudo-GPS
             std::uint64_t ns = timestamp * 1000ULL / 12ULL;
             std::uint64_t seconds = (ns / 1000000000ULL) % 86400;
             std::uint64_t nanos = ns % 1000000000ULL;
             timestamp = (seconds << 30) | nanos;
-        } else if (timestamp_type == modes::TimestampType::GPS && settings.gps_timestamps.off()) {
+        } else if (timestamp_type == modes::TimestampType::GPS && (settings.radarcape.off() || settings.gps_timestamps.off())) {
+            // beast output or 12MHz timestamps were explicitly requested
             // scale GPS to 12MHz
             std::uint64_t seconds = timestamp >> 30;
             std::uint64_t nanos = timestamp & 0x3FFFFFFF;
@@ -253,7 +255,12 @@ namespace beast {
 
     void SocketOutput::handle_error(const boost::system::error_code &ec)
     {
-        std::cerr << "output: connection error seen: " << ec.message() << std::endl;
+        if (ec == boost::asio::error::eof) {
+            std::cerr << peer << ": connection closed" << std::endl;
+        } else if (ec != boost::asio::error::operation_aborted) {
+            std::cerr << peer << ": connection error: " << ec.message() << std::endl;
+        }
+
         close();
     }
 
@@ -304,19 +311,17 @@ namespace beast {
     {
         auto self(shared_from_this());
 
-        std::cerr << "starting accept" << std::endl;
         acceptor.async_accept(socket,
+                              peer,
                               [this,self] (const boost::system::error_code &ec) {
                                   if (!ec) {
-                                      std::cerr << "accepted a connection" << std::endl;
+                                      std::cerr << endpoint << ": accepted a connection from " << peer << " with settings " << initial_settings << std::endl;
                                       SocketOutput::pointer new_output = SocketOutput::create(service, std::move(socket), initial_settings);
 
-                                      std::cerr << "Initial settings are " << initial_settings << std::endl;
                                       modes::FilterDistributor::handle h = distributor.add_client(std::bind(&SocketOutput::write, new_output, std::placeholders::_1),
                                                                                                   initial_settings.to_filter());
 
                                       new_output->set_settings_notifier([this,self,h] (const Settings &newsettings) {
-                                              std::cerr << "Client updated settings to" << newsettings << std::endl;
                                               distributor.update_client_filter(h, newsettings.to_filter());
                                           });
 
@@ -325,9 +330,13 @@ namespace beast {
                                           });
 
                                       new_output->start();
-
-                                      accept_connection();
+                                  } else {
+                                      if (ec == boost::system::errc::operation_canceled)
+                                          return;
+                                      std::cerr << endpoint << ": accept error: " << ec.message() << std::endl;
                                   }
+
+                                  accept_connection();
                               });
     }
 

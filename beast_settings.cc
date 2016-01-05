@@ -20,10 +20,10 @@ namespace beast {
     Settings::Settings(const modes::Filter &filter)
         : filter_11_17_18(true),
           crc_disable(filter.receive_bad_crc),
-          filter_0_4_5(!filter.receive_df[0] && !filter.receive_df[4] && filter.receive_df[5]),
           gps_timestamps(filter.receive_gps_timestamps),
           fec_disable(!filter.receive_fec),
-          modeac_enable(filter.receive_modeac)          
+          modeac_enable(filter.receive_modeac),
+          filter_0_4_5(!filter.receive_df[0] && !filter.receive_df[4] && filter.receive_df[5])
     {
         for (auto i = 0; i < 32; ++i) {
             if (filter.receive_df[i] && i != 11 && i != 17 && i != 18) {
@@ -39,6 +39,8 @@ namespace beast {
 
         for (char ch : str) {
             switch (ch) {
+            case 'B': radarcape = false; break;    // no equivalent dipswitch
+            case 'R': radarcape = true; break;     // no equivalent dipswitch
             case 'c': binary_format = false; break;
             case 'C': binary_format = true; break;
             case 'd': filter_11_17_18 = false; break;
@@ -55,12 +57,16 @@ namespace beast {
             case 'I': fec_disable = true; break;
             case 'j': modeac_enable = false; break;
             case 'J': modeac_enable = true; break;
-            case 'b': filter_0_4_5 = false; break; // this is g/G on the Beast, but we separate it out
-            case 'B': filter_0_4_5 = true; break;
-            case 'r': radarcape = false; break;    // no equivalent dipswitch
-            case 'R': radarcape = true; break;
+            case 'k': filter_0_4_5 = false; break; // this is g/G on the Beast, but we separate it out
+            case 'K': filter_0_4_5 = true; break;
             }
         }
+
+        // ensure settings are selfconsistent
+        if (radarcape.off() && !gps_timestamps.dontcare())
+            gps_timestamps = false;
+        else if (radarcape.on() && !filter_0_4_5.dontcare())
+            filter_0_4_5 = false;
     }
 
     Settings Settings::operator|(const Settings &other) const
@@ -117,7 +123,7 @@ namespace beast {
         f.receive_bad_crc = crc_disable;
         f.receive_fec = !fec_disable;
         f.receive_status = !radarcape.off();
-        f.receive_gps_timestamps = gps_timestamps;
+        f.receive_gps_timestamps = !radarcape.off() && !gps_timestamps.off();
 
         return f;
     }
@@ -132,19 +138,26 @@ namespace beast {
     template <bool D,char OFF,char ON>
     static void add_setting(helpers::bytebuf &msg, const Settings::tristate<D,OFF,ON> &onoff)
     {
-        add_setting(msg, (bool)onoff, OFF, ON);
+        if (!onoff.dontcare())
+            add_setting(msg, (bool)onoff, OFF, ON);
     }
 
     helpers::bytebuf Settings::to_message() const
     {
         helpers::bytebuf msg;
 
+        if (radarcape.dontcare())
+            throw std::logic_error("need to explictly select radarcape or beast when generating settings messages");
+
         add_setting(msg, binary_format);
         add_setting(msg, filter_11_17_18);
         add_setting(msg, avrmlat);
         add_setting(msg, crc_disable);
         // this is a little special because of the ambiguity between radarcape and beast
-        add_setting(msg, radarcape ? gps_timestamps : filter_0_4_5, 'g', 'G');
+        if (!radarcape && !filter_0_4_5.dontcare())
+            add_setting(msg, filter_0_4_5, 'g', 'G');
+        else if (radarcape && !gps_timestamps.dontcare())
+            add_setting(msg, gps_timestamps, 'g', 'G');
         add_setting(msg, rts_handshake);
         add_setting(msg, fec_disable);
         add_setting(msg, modeac_enable);
@@ -170,10 +183,10 @@ namespace beast {
 
     std::ostream &operator<<(std::ostream &os, const Settings &s)
     {
-        return (os << s.binary_format << s.filter_11_17_18
-                << s.avrmlat << s.crc_disable
-                << s.gps_timestamps << s.rts_handshake
-                << s.fec_disable << s.modeac_enable
-                << s.radarcape << s.filter_0_4_5);
+        return (os << s.radarcape << s.binary_format
+                << s.filter_11_17_18 << s.avrmlat
+                << s.crc_disable << s.gps_timestamps
+                << s.rts_handshake << s.fec_disable 
+                << s.modeac_enable << s.filter_0_4_5);
     }
 };

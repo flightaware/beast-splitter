@@ -135,8 +135,11 @@ namespace beast {
         // vector of baud rates to try, single entry if a fixed rate is set
         std::vector<unsigned int> autobaud_rates;
 
-        // currently used baud rate, iterator into autobaud_rates
-        std::vector<unsigned int>::iterator baud_rate;
+        // current iterator into autobaud_rates
+        std::vector<unsigned int>::iterator autobaud_rate;
+
+        // actual rate to use
+        unsigned int baud_rate;
 
         // how long to wait between autobaud attempts; doubles (up to a limit)
         // each time all rates in autobaud_rates have been tried
@@ -156,6 +159,9 @@ namespace beast {
 
         // bytes since we last had sync or reported bad sync
         unsigned bytes_since_sync;
+
+        // are we still waiting for the first good message?
+        bool first_message;
 
         // cached buffer used for reads
         std::shared_ptr<helpers::bytebuf> readbuf;
