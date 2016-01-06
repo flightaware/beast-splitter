@@ -31,7 +31,7 @@ namespace beast {
                 break;
             }
         }
-    }   
+    }
 
     Settings::Settings(const std::string &str)
     {
@@ -84,7 +84,7 @@ namespace beast {
         s.radarcape |= other.radarcape;
         return s;
     }
-    
+
     std::uint8_t Settings::to_status_byte() const
     {
         if (!radarcape)
@@ -186,7 +186,7 @@ namespace beast {
         return (os << s.radarcape << s.binary_format
                 << s.filter_11_17_18 << s.avrmlat
                 << s.crc_disable << s.gps_timestamps
-                << s.rts_handshake << s.fec_disable 
+                << s.rts_handshake << s.fec_disable
                 << s.modeac_enable << s.filter_0_4_5);
     }
 };

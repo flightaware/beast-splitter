@@ -108,7 +108,7 @@ int main(int argc, char **argv)
     if (opts.count("help")) {
         std::cerr << desc << std::endl;
         return 0;
-    }    
+    }
 
     if (!opts.count("connect") && !opts.count("listen")) {
         std::cerr << "At least one --connect or --listen argument is needed" << std::endl;
@@ -130,7 +130,7 @@ int main(int argc, char **argv)
             boost::system::error_code ec;
 
             bool success = false;
-            tcp::resolver::iterator end;                
+            tcp::resolver::iterator end;
             for (auto i = resolver.resolve(query, ec); i != end; ++i) {
                 const auto &endpoint = i->endpoint();
 
@@ -144,7 +144,7 @@ int main(int argc, char **argv)
                     ec = err.code();
                 }
             }
-            
+
             if (!success) {
                 std::cerr << "Could not bind to any addresses of " << l.host << ": " << ec.message() << std::endl;
                 return 2;

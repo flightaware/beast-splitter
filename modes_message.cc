@@ -24,7 +24,7 @@ namespace modes {
 
         template <std::uint32_t c, int k = 8>
         struct crcgen : crcgen<((c & 0x00800000) ? crc_polynomial : 0) ^ (c << 1), k - 1> {};
-    
+
         template <std::uint32_t c>
         struct crcgen<c, 0>
         {

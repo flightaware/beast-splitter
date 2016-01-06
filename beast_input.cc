@@ -16,7 +16,7 @@ SerialInput::SerialInput(boost::asio::io_service &service_,
                          const Settings &fixed_settings_,
                          const modes::Filter &filter_)
     : path(path_),
-      port(service_),      
+      port(service_),
       reconnect_timer(service_),
       receiver_type(ReceiverType::UNKNOWN),
       fixed_settings(fixed_settings_),
@@ -54,7 +54,7 @@ void SerialInput::start(void)
         std::cerr << path << ": trying port at " << baud_rate << "bps" << std::endl;
     else
         std::cerr << path << ": opening port at " << baud_rate << "bps" << std::endl;
-    
+
     try {
         if (port.is_open())
             port.cancel();
@@ -77,7 +77,7 @@ void SerialInput::start(void)
         receiver_type = ReceiverType::RADARCAPE;
     else if (fixed_settings.radarcape.off())
         receiver_type = ReceiverType::BEAST;
-    else {                
+    else {
         receiver_type = ReceiverType::UNKNOWN;
         autodetect_timer.expires_from_now(radarcape_detect_interval);
         autodetect_timer.async_wait([this,self] (const boost::system::error_code &ec) {
@@ -162,7 +162,7 @@ void SerialInput::handle_error(const boost::system::error_code &ec)
             if (!ec) {
                 start();
             }
-        });    
+        });
 }
 
 void SerialInput::advance_autobaud(void)
@@ -289,7 +289,7 @@ void SerialInput::parse_input(const helpers::bytebuf &buf)
             // Expecting <typebyte> <data...>
             messagetype = messagetype_from_byte(*p);
             if (messagetype == modes::MessageType::INVALID) {
-                if (state == ParserState::READ_TYPE) {                    
+                if (state == ParserState::READ_TYPE) {
                     lost_sync();
                 } else { // TEST_TYPE, we didn't have sync anyway so don't lose sync
                     state = ParserState::FIND_1A;
@@ -324,13 +324,13 @@ void SerialInput::parse_input(const helpers::bytebuf &buf)
                         ++p;
 
                     }
-                    
+
                     if (metadata.size() < 7)
                         metadata.push_back(b);
                     else
                         messagedata.push_back(b);
                 }
-                
+
                 if (messagedata.size() >= msglen) {
                     // Done with this message.
                     dispatch_message();
@@ -366,7 +366,7 @@ void SerialInput::parse_input(const helpers::bytebuf &buf)
                 }
             }
             break;
-            
+
         default:
             // WAT
             lost_sync();
@@ -401,7 +401,7 @@ void SerialInput::dispatch_message()
         receiving_gps_timestamps = Settings(messagedata[0]).gps_timestamps.on();
         if (receiver_type == ReceiverType::UNKNOWN) {
             receiver_type = ReceiverType::RADARCAPE;
-            autodetect_timer.cancel();            
+            autodetect_timer.cancel();
             send_settings_message(); // for the g/G setting
         }
     }
@@ -425,7 +425,7 @@ void SerialInput::dispatch_message()
     std::uint64_t timestamp =
         ((std::uint64_t)metadata[0] << 40) |
         ((std::uint64_t)metadata[1] << 32) |
-        ((std::uint64_t)metadata[2] << 24) | 
+        ((std::uint64_t)metadata[2] << 24) |
         ((std::uint64_t)metadata[3] << 16) |
         ((std::uint64_t)metadata[4] << 8) |
         ((std::uint64_t)metadata[5]);

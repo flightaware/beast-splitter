@@ -33,7 +33,7 @@ namespace beast {
     void SocketOutput::read_commands()
     {
         auto self(shared_from_this());
-        auto buf = std::make_shared< std::vector<std::uint8_t> >(512);    
+        auto buf = std::make_shared< std::vector<std::uint8_t> >(512);
 
         async_read(socket, asio::buffer(*buf),
                    [this,self,buf] (const boost::system::error_code &ec, std::size_t len) {
@@ -169,7 +169,7 @@ namespace beast {
         // if gps_timestamps is DONTCARE, we just use whatever is provided
 
         if (settings.binary_format) {
-            write_binary(type, timestamp, signal, data);        
+            write_binary(type, timestamp, signal, data);
         } else if (settings.avrmlat) {
             if (type != modes::MessageType::STATUS)
                 write_avrmlat(timestamp, data);
@@ -211,7 +211,7 @@ namespace beast {
                         // that might take a while to complete, and
                         // if we do another write before it completes
                         // then it might interleave data.
-                        flush_pending = false;        
+                        flush_pending = false;
 
                         if (!outbuf) {
                             writebuf->clear();
@@ -310,7 +310,7 @@ namespace beast {
         socket.close();
         if (close_notifier)
             close_notifier();
-    }    
+    }
 
     //////////////
 

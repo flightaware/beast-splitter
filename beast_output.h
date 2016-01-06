@@ -60,7 +60,7 @@ namespace beast {
         void process_commands(std::vector<std::uint8_t> data);
         void process_option_command(uint8_t option);
 
-        void handle_error(const boost::system::error_code &ec);            
+        void handle_error(const boost::system::error_code &ec);
 
         void write_message(modes::MessageType type,
                            modes::TimestampType timestamp_type,
@@ -82,7 +82,7 @@ namespace beast {
         void complete_write();
         void flush_outbuf();
 
-        boost::asio::io_service &service;            
+        boost::asio::io_service &service;
         boost::asio::ip::tcp::socket socket;
         boost::asio::ip::tcp::endpoint peer;
 
@@ -117,7 +117,7 @@ namespace beast {
     private:
         SocketListener(boost::asio::io_service &service_, const boost::asio::ip::tcp::endpoint &endpoint_,
                        modes::FilterDistributor &distributor, const Settings &initial_settings_);
-        
+
         void accept_connection();
 
         boost::asio::io_service &service;

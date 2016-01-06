@@ -38,7 +38,7 @@ namespace modes {
                 if (message.crc_bad() && !receive_bad_crc)
                     return false;
                 return true;
-                
+
             default:
                 // what is this?
                 return false;
@@ -79,7 +79,7 @@ namespace modes {
         };
 
         std::map<handle, client> clients;
-    };        
+    };
 };
 
 #endif

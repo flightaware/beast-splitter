@@ -20,7 +20,7 @@ namespace modes {
         STATUS
     };
 
-    enum class TimestampType { UNKNOWN, TWELVEMEG, GPS };    
+    enum class TimestampType { UNKNOWN, TWELVEMEG, GPS };
 
     inline std::ostream& operator<<(std::ostream &os, const MessageType &t) {
         switch (t) {
@@ -31,7 +31,7 @@ namespace modes {
         default: return (os << "INVALID");
         }
     }
-        
+
     inline std::size_t message_size(MessageType type)
     {
         // return the expected number of data bytes for a message of the given type
@@ -55,7 +55,7 @@ namespace modes {
         }
         return c & 0x00FFFFFF;
     }
-    
+
     // a single message
     class Message {
     public:
@@ -68,14 +68,14 @@ namespace modes {
         {}
 
         Message(MessageType type_,
-                TimestampType timestamp_type_, std::uint64_t timestamp_,                
+                TimestampType timestamp_type_, std::uint64_t timestamp_,
                 std::uint8_t signal_, std::vector<std::uint8_t> &&data_)
             : m_type(type_),
               m_timestamp_type(timestamp_type_),
               m_timestamp(timestamp_),
               m_signal(signal_),
               m_data(std::move(data_)),
-              residual(0xFFFFFFFF)                  
+              residual(0xFFFFFFFF)
         {
             assert (m_data.size() == message_size(m_type));
         }
@@ -111,7 +111,7 @@ namespace modes {
 
         const std::vector<std::uint8_t> &data() const {
             return m_data;
-        }        
+        }
 
         int df() const {
             switch (m_type) {
@@ -134,20 +134,20 @@ namespace modes {
                 return false;
             }
         }
-            
+
     private:
         std::uint32_t crc_residual() const {
             if (residual == 0xFFFFFFFF) {
                 std::size_t len = m_data.size();
                 if (len <= 3) {
                     residual = 0;
-                } else {                     
+                } else {
                     residual = crc(m_data.begin(), m_data.end() - 3);
                     residual ^= (m_data[len-3] << 16);
                     residual ^= (m_data[len-2] << 8);
                     residual ^= (m_data[len-1]);
                 }
-            } 
+            }
             return residual;
         }
 
