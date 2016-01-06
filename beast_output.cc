@@ -16,10 +16,12 @@ namespace beast {
     SocketOutput::SocketOutput(asio::io_service &service_,
                                tcp::socket &&socket_,
                                const Settings &settings_)
-        : socket(std::move(socket_)),
+        : service(service_),
+          socket(std::move(socket_)),
           peer(socket.remote_endpoint()),
           state(ParserState::FIND_1A),
-          settings(settings_)
+          settings(settings_),
+          flush_pending(false)
     {
     }
 
@@ -177,7 +179,51 @@ namespace beast {
         }
     }
 
-    static void push_back_escape(std::vector<std::uint8_t> &v, std::uint8_t b)
+    void SocketOutput::prepare_write()
+    {
+        if (!outbuf) {
+            outbuf = std::make_shared<helpers::bytebuf>();
+            outbuf->reserve(read_buffer_size);
+        }
+    }
+
+    void SocketOutput::complete_write()
+    {
+        if (!flush_pending && !outbuf->empty()) {
+            flush_pending = true;
+            service.post(std::bind(&SocketOutput::flush_outbuf, shared_from_this()));
+        }
+    }
+
+    void SocketOutput::flush_outbuf()
+    {
+        if (!outbuf || outbuf->empty())
+            return;
+
+        std::shared_ptr<helpers::bytebuf> writebuf;
+        writebuf.swap(outbuf);
+
+        auto self(shared_from_this());
+        async_write(socket, boost::asio::buffer(*writebuf),
+                    [this,self,writebuf] (const boost::system::error_code &ec, size_t len) {
+                        // NB: we only reset the pending flag here,
+                        // because async_write is a composed operation
+                        // that might take a while to complete, and
+                        // if we do another write before it completes
+                        // then it might interleave data.
+                        flush_pending = false;        
+
+                        if (!outbuf) {
+                            writebuf->clear();
+                            outbuf = writebuf;
+                        }
+
+                        if (ec)
+                            handle_error(ec);
+                    });
+    }
+
+    static inline void push_back_beast(helpers::bytebuf &v, std::uint8_t b)
     {
         if (b == 0x1A)
             v.push_back(0x1A);
@@ -189,68 +235,63 @@ namespace beast {
                                     std::uint8_t signal,
                                     const helpers::bytebuf &data)
     {
-        // build a vector with the escaped data to write
-        auto msg = std::make_shared< std::vector<uint8_t> >();
-        msg->reserve(32);
+        prepare_write();
+        outbuf->push_back(0x1A);
+        outbuf->push_back(messagetype_to_byte(type));
 
-        msg->push_back(0x1A);
-        msg->push_back(messagetype_to_byte(type));
-
-        push_back_escape(*msg, (timestamp >> 40) & 0xFF);
-        push_back_escape(*msg, (timestamp >> 32) & 0xFF);
-        push_back_escape(*msg, (timestamp >> 24) & 0xFF);
-        push_back_escape(*msg, (timestamp >> 16) & 0xFF);
-        push_back_escape(*msg, (timestamp >> 8) & 0xFF);
-        push_back_escape(*msg, timestamp & 0xFF);
-        push_back_escape(*msg, signal);
+        push_back_beast(*outbuf, (timestamp >> 40) & 0xFF);
+        push_back_beast(*outbuf, (timestamp >> 32) & 0xFF);
+        push_back_beast(*outbuf, (timestamp >> 24) & 0xFF);
+        push_back_beast(*outbuf, (timestamp >> 16) & 0xFF);
+        push_back_beast(*outbuf, (timestamp >> 8) & 0xFF);
+        push_back_beast(*outbuf, timestamp & 0xFF);
+        push_back_beast(*outbuf, signal);
 
         for (auto b : data)
-            push_back_escape(*msg, b);
+            push_back_beast(*outbuf, b);
 
-        write_bytes(msg);
+        complete_write();
     }
 
     // we could use ostrstream here, I guess, but this is simpler
 
-    static void push_back_hex(std::vector<char> &v, std::uint8_t b)
+    static inline void push_back_hex(helpers::bytebuf &v, std::uint8_t b)
     {
         static const char *hexdigits = "0123456789ABCDEF";
-        v.push_back(hexdigits[(b >> 4) & 0x0F]);
-        v.push_back(hexdigits[b & 0x0F]);
+        v.push_back((std::uint8_t) hexdigits[(b >> 4) & 0x0F]);
+        v.push_back((std::uint8_t) hexdigits[b & 0x0F]);
     }
 
     void SocketOutput::write_avr(const helpers::bytebuf &data)
     {
-        auto msg = std::make_shared< std::vector<char> >();
-        msg->reserve(3 + data.size() * 2);
-   
-        msg->push_back('*');
-        for (auto b : data)
-            push_back_hex(*msg, b);
-        msg->push_back(';');
-        msg->push_back('\n');
+        prepare_write();
 
-        write_bytes(msg);
+        outbuf->push_back((std::uint8_t) '*');
+        for (auto b : data)
+            push_back_hex(*outbuf, b);
+        outbuf->push_back((std::uint8_t) ';');
+        outbuf->push_back((std::uint8_t) '\n');
+
+        complete_write();
     }
 
     void SocketOutput::write_avrmlat(std::uint64_t timestamp, const helpers::bytebuf &data)
     {
-        auto msg = std::make_shared< std::vector<char> >();
-        msg->reserve(15 + data.size() * 2);
+        prepare_write();
 
-        msg->push_back('@');
-        push_back_hex(*msg, (timestamp >> 40) & 0xFF);
-        push_back_hex(*msg, (timestamp >> 32) & 0xFF);
-        push_back_hex(*msg, (timestamp >> 24) & 0xFF);
-        push_back_hex(*msg, (timestamp >> 16) & 0xFF);
-        push_back_hex(*msg, (timestamp >> 8) & 0xFF);
-        push_back_hex(*msg, timestamp & 0xFF);
+        outbuf->push_back((std::uint8_t) '@');
+        push_back_hex(*outbuf, (timestamp >> 40) & 0xFF);
+        push_back_hex(*outbuf, (timestamp >> 32) & 0xFF);
+        push_back_hex(*outbuf, (timestamp >> 24) & 0xFF);
+        push_back_hex(*outbuf, (timestamp >> 16) & 0xFF);
+        push_back_hex(*outbuf, (timestamp >> 8) & 0xFF);
+        push_back_hex(*outbuf, timestamp & 0xFF);
         for (auto b : data)
-            push_back_hex(*msg, b);
-        msg->push_back(';');
-        msg->push_back('\n');
+            push_back_hex(*outbuf, b);
+        outbuf->push_back((std::uint8_t) ';');
+        outbuf->push_back((std::uint8_t) '\n');
 
-        write_bytes(msg);
+        complete_write();
     }
 
     void SocketOutput::handle_error(const boost::system::error_code &ec)

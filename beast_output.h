@@ -28,6 +28,8 @@ namespace beast {
     public:
         typedef std::shared_ptr<SocketOutput> pointer;
 
+        const unsigned int read_buffer_size = 4096;
+
         // factory method, this class must always be constructed via make_shared
         static pointer create(boost::asio::io_service &service,
                               boost::asio::ip::tcp::socket &&socket,
@@ -76,17 +78,11 @@ namespace beast {
 
         void write_avr(const helpers::bytebuf &data);
 
-        template <class T>
-        void write_bytes(std::shared_ptr<T> msg)
-        {
-            auto self(shared_from_this());
-            async_write(socket, boost::asio::buffer(*msg),
-                        [this,self,msg] (const boost::system::error_code &ec, size_t len) {
-                            if (ec)
-                                handle_error(ec);
-                        });
-        }
-            
+        void prepare_write();
+        void complete_write();
+        void flush_outbuf();
+
+        boost::asio::io_service &service;            
         boost::asio::ip::tcp::socket socket;
         boost::asio::ip::tcp::endpoint peer;
 
@@ -97,6 +93,9 @@ namespace beast {
 
         std::function<void(const Settings&)> settings_notifier;
         std::function<void()> close_notifier;
+
+        std::shared_ptr<helpers::bytebuf> outbuf;
+        bool flush_pending;
     };
 
     class SocketListener : public std::enable_shared_from_this<SocketListener> {
