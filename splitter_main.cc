@@ -80,7 +80,7 @@ namespace beast {
     }
 }
 
-int main(int argc, char **argv)
+static int realmain(int argc, char **argv)
 {
     boost::asio::io_service io_service;
     modes::FilterDistributor distributor;
@@ -157,4 +157,14 @@ int main(int argc, char **argv)
 
     io_service.run();
     return 0;
+}
+
+int main(int argc, char **argv)
+{
+    try {
+        return realmain(argc, argv);
+    } catch (std::exception &e) {
+        std::cerr << "Uncaught exception: " << e.what() << std::endl;
+        return 99;
+    }
 }
