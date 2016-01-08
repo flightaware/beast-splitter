@@ -61,6 +61,9 @@ namespace beast {
         // isn't a radarcape
         const std::chrono::milliseconds radarcape_detect_interval = std::chrono::seconds(3);
 
+        // how long to wait between scheduling reads (to reduce the spinning on short messages)
+        const std::chrono::milliseconds read_interval = std::chrono::milliseconds(50);
+
         // message notifier type
         typedef std::function<void(const modes::Message &)> MessageNotifier;
 
@@ -99,7 +102,7 @@ namespace beast {
         void send_settings_message(void);
         void handle_error(const boost::system::error_code &ec);
         void advance_autobaud(void);
-        void start_reading(void);
+        void start_reading(const boost::system::error_code &ec = boost::system::error_code());
         void lost_sync(void);
         void parse_input(const helpers::bytebuf &buf);
         void dispatch_message(void);
@@ -150,6 +153,9 @@ namespace beast {
 
         // timer that expires after autodetect_interval
         boost::asio::steady_timer autodetect_timer;
+
+        // timer that expires when we want to read some more data
+        boost::asio::steady_timer read_timer;
 
         // number of consecutive messages with good sync we have seen
         unsigned good_sync;

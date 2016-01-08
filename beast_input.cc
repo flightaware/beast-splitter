@@ -25,6 +25,7 @@ SerialInput::SerialInput(boost::asio::io_service &service_,
       autobaud_interval(autobaud_base_interval),
     autobaud_timer(service_),
     autodetect_timer(service_),
+    read_timer(service_),
     good_sync(0),
     bad_sync(0),
     bytes_since_sync(0),
@@ -142,6 +143,7 @@ void SerialInput::handle_error(const boost::system::error_code &ec)
 
     autobaud_timer.cancel();
     autodetect_timer.cancel();
+    read_timer.cancel();
     if (port.is_open()) {
         boost::system::error_code ignored;
         port.close(ignored);
@@ -180,8 +182,13 @@ void SerialInput::advance_autobaud(void)
     start();
 }
 
-void SerialInput::start_reading(void)
+void SerialInput::start_reading(const boost::system::error_code &ec)
 {
+    if (ec) {
+        assert (ec == boost::asio::error::operation_aborted);
+        return;
+    }
+
     auto self(shared_from_this());
     std::shared_ptr<helpers::bytebuf> buf;
 
@@ -192,6 +199,7 @@ void SerialInput::start_reading(void)
         buf = std::make_shared<helpers::bytebuf>(read_buffer_size);
     }
 
+    read_timer.expires_from_now(read_interval);
     port.async_read_some(boost::asio::buffer(*buf),
                          [this,self,buf] (const boost::system::error_code &ec, std::size_t len) {
                              if (ec) {
@@ -201,7 +209,18 @@ void SerialInput::start_reading(void)
                                  buf->resize(len);
                                  parse_input(*buf);
                                  readbuf = buf;
-                                 start_reading();
+
+                                 // If we didn't get a full-ish buffer, then wait a bit before the next read so we don't
+                                 // spin reading only a few bytes each time.
+
+                                 // (unfortunately, boost::asio's edge-triggered epoll still gets woken repeatedly each time a
+                                 // little more data arrives, but at least we don't have to do a bunch of work on every one of
+                                 // those)
+                                 if (len < read_buffer_size*3/4) {
+                                     read_timer.async_wait(std::bind(&SerialInput::start_reading, self, std::placeholders::_1));
+                                 } else {
+                                     start_reading();
+                                 }
                              }
                          });
 }
