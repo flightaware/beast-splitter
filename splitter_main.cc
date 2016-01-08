@@ -126,7 +126,7 @@ static int realmain(int argc, char **argv)
 
     if (opts.count("listen")) {
         for (auto l : opts["listen"].as< std::vector<listen_option> >()) {
-            tcp::resolver::query query(l.host, l.port, tcp::resolver::query::passive | tcp::resolver::query::address_configured);
+            tcp::resolver::query query(l.host, l.port, tcp::resolver::query::passive);
             boost::system::error_code ec;
 
             bool success = false;
