@@ -55,7 +55,7 @@ namespace beast {
         const size_t read_buffer_size = 4096;
 
         // how long to wait before trying to reopen the serial port after an error
-        const std::chrono::milliseconds reconnect_interval = std::chrono::seconds(15);
+        const std::chrono::milliseconds reconnect_interval = std::chrono::seconds(60);
 
         // how long to wait for a radarcape status message before assuming the receiver
         // isn't a radarcape
