@@ -381,4 +381,129 @@ namespace beast {
                               });
     }
 
+    //////////////
+
+    SocketConnector::SocketConnector(asio::io_service &service_,
+                                     const std::string &host_,
+                                     const std::string &port_or_service_,
+                                     modes::FilterDistributor &distributor_,
+                                     const Settings &initial_settings_)
+        : service(service_),
+          resolver(service_),
+          socket(service_),
+          reconnect_timer(service_),
+          host(host_),
+          port_or_service(port_or_service_),
+          distributor(distributor_),
+          initial_settings(initial_settings_),
+          running(false)
+    {
+    }
+
+    void SocketConnector::start()
+    {
+        running = true;
+        resolve_and_connect();
+    }
+
+    void SocketConnector::close()
+    {
+        running = false;
+        resolver.cancel();
+        reconnect_timer.cancel();
+        socket.close();
+    }
+
+    void SocketConnector::resolve_and_connect(const boost::system::error_code &ec)
+    {
+        if (!running) {
+            return;
+        }
+
+        if (ec) {
+            assert (ec == boost::asio::error::operation_aborted);
+            return;
+        }
+
+        auto self(shared_from_this());
+
+        tcp::resolver::query query(host, port_or_service);
+        resolver.async_resolve(query, [this,self] (const boost::system::error_code &ec,
+                                                   tcp::resolver::iterator it) {
+                                   if (!ec) {
+                                       next_endpoint = it;
+                                       try_next_endpoint();
+                                   } else if (ec == boost::asio::error::operation_aborted) {
+                                       return;
+                                   } else {
+                                       std::cerr << host << ":" << port_or_service << ": could not resolve address: " << ec.message() << std::endl;
+                                       schedule_reconnect();
+                                       return;
+                                   }
+                               });
+    }
+
+    void SocketConnector::try_next_endpoint()
+    {
+        if (!running) {
+            return;
+        }
+
+        if (next_endpoint == tcp::resolver::iterator()) {
+            // No more addresses to try
+            schedule_reconnect();
+            return;
+        }
+
+        tcp::endpoint endpoint = *next_endpoint++;
+
+        auto self(shared_from_this());
+        socket.async_connect(endpoint,
+                             [this,self,endpoint] (const boost::system::error_code &ec) {
+                                 if (!ec) {
+                                     connection_established(endpoint);
+                                 } else if (ec == boost::asio::error::operation_aborted) {
+                                     return;
+                                 } else {
+                                     std::cerr << host << ":" << port_or_service << ": connection to " << endpoint << " failed: " << ec.message() << std::endl;
+                                     socket.close();
+                                     try_next_endpoint();
+                                 }
+                             });
+    }
+
+    void SocketConnector::schedule_reconnect()
+    {
+        if (running) {
+            std::cerr << host << ":" << port_or_service << ": reconnecting in "
+                      << std::chrono::duration_cast<std::chrono::seconds>(reconnect_interval).count() << " seconds"
+                      << std::endl;
+
+            auto self(shared_from_this());
+            reconnect_timer.expires_from_now(reconnect_interval);
+            reconnect_timer.async_wait(std::bind(&SocketConnector::resolve_and_connect, self, std::placeholders::_1));
+        }
+    }
+
+    void SocketConnector::connection_established(const tcp::endpoint &endpoint)
+    {
+        auto self(shared_from_this());
+
+        std::cerr << host << ":" << port_or_service << ": connected to " << endpoint << " with settings " << initial_settings << std::endl;
+        SocketOutput::pointer new_output = SocketOutput::create(service, std::move(socket), initial_settings);
+
+        modes::FilterDistributor::handle h = distributor.add_client(std::bind(&SocketOutput::write, new_output, std::placeholders::_1),
+                                                                    initial_settings.to_filter());
+
+        new_output->set_settings_notifier([this,self,h] (const Settings &newsettings) {
+                distributor.update_client_filter(h, newsettings.to_filter());
+            });
+
+        new_output->set_close_notifier([this,self,h] {
+                distributor.remove_client(h);
+                schedule_reconnect();
+            });
+
+        new_output->start();
+    }
 };

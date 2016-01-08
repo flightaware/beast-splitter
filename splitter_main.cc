@@ -152,6 +152,13 @@ static int realmain(int argc, char **argv)
         }
     }
 
+    if (opts.count("connect")) {
+        for (auto l : opts["connect"].as< std::vector<connect_option> >()) {
+            auto connector = beast::SocketConnector::create(io_service, l.host, l.port, distributor, l.settings);
+            connector->start();
+        }
+    }
+
     serial->set_message_notifier(std::bind(&modes::FilterDistributor::broadcast, &distributor, std::placeholders::_1));
     serial->start();
 

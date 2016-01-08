@@ -128,6 +128,52 @@ namespace beast {
         modes::FilterDistributor &distributor;
         Settings initial_settings;
     };
+
+    class SocketConnector : public std::enable_shared_from_this<SocketConnector> {
+    public:
+        typedef std::shared_ptr<SocketConnector> pointer;
+
+        const std::chrono::milliseconds reconnect_interval = std::chrono::seconds(60);
+
+        // factory method, this class must always be constructed via make_shared
+        static pointer create(boost::asio::io_service &service,
+                              const std::string &host,
+                              const std::string &port_or_service,
+                              modes::FilterDistributor &distributor,
+                              const Settings &initial_settings)
+        {
+            return pointer(new SocketConnector(service, host, port_or_service, distributor, initial_settings));
+        }
+
+        void start();
+        void close();
+
+    private:
+        SocketConnector(boost::asio::io_service &service_,
+                        const std::string &host_,
+                        const std::string &port_or_service_,
+                        modes::FilterDistributor &distributor,
+                        const Settings &initial_settings_);
+
+        void schedule_reconnect();
+        void resolve_and_connect(const boost::system::error_code &ec = boost::system::error_code());
+        void try_next_endpoint();
+        void connection_established(const boost::asio::ip::tcp::endpoint &endpoint);
+
+
+        boost::asio::io_service &service;
+        boost::asio::ip::tcp::resolver resolver;
+        boost::asio::ip::tcp::socket socket;
+        boost::asio::steady_timer reconnect_timer;
+
+        std::string host;
+        std::string port_or_service;
+        modes::FilterDistributor &distributor;
+        Settings initial_settings;
+
+        bool running;
+        boost::asio::ip::tcp::resolver::iterator next_endpoint;
+    };
 };
 
 #endif
