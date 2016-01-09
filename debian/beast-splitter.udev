@@ -2,8 +2,8 @@ ACTION=="remove", GOTO="beast_end"
 SUBSYSTEM!="tty", GOTO="beast_end"
 
 IMPORT{builtin}="usb_id"
-ENV{ID_MODEL}=="Mode-S_Beast", ENV{ID_USB_INTERFACE_NUM}=="00", SYMLINK+="beast", MODE="0666"
-ENV{ID_MODEL}=="Mode-S_Beast_GPS", ENV{ID_USB_INTERFACE_NUM}=="00", SYMLINK+="beast", MODE="0666"
-ENV{ID_MODEL}=="Mode-S_Beast_GPS", ENV{ID_USB_INTERFACE_NUM}=="01", SYMLINK+="beastgps", MODE="0444"
+ENV{ID_MODEL}=="Mode-S_Beast", ENV{ID_USB_INTERFACE_NUM}=="00", SYMLINK+="beast", MODE="0660", GROUP="beast"
+ENV{ID_MODEL}=="Mode-S_Beast_GPS", ENV{ID_USB_INTERFACE_NUM}=="00", SYMLINK+="beast", MODE="0660", GROUP="beast"
+ENV{ID_MODEL}=="Mode-S_Beast_GPS", ENV{ID_USB_INTERFACE_NUM}=="01", SYMLINK+="beastgps", MODE="0440", GROUP="beast"
 
 LABEL="beast_end"
