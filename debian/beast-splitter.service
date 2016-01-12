@@ -6,6 +6,8 @@ Description=Mode S Beast data forwarder
 Documentation=https://github.com/flightaware/beast-splitter
 Wants=network.target
 After=network.target
+BindsTo=dev-beast.device
+After=dev-beast.device
 
 [Service]
 User=beast
@@ -14,6 +16,3 @@ ExecStart=/usr/bin/beast-splitter --serial /dev/beast --listen 30005:R --connect
 Type=simple
 Restart=on-failure
 RestartSec=30
-
-[Install]
-WantedBy=default.target
