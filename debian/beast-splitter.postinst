@@ -41,4 +41,7 @@ esac
 
 #DEBHELPER#
 
+# retrigger udev for the new config file
+/sbin/udevadm trigger --property-match="ID_USB_DRIVER=cp210x" || true
+
 exit 0

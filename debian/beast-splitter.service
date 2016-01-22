@@ -6,6 +6,7 @@ Description=Mode S Beast data forwarder
 Documentation=https://github.com/flightaware/beast-splitter
 Wants=network.target
 After=network.target
+Requisite=dev-beast.device
 BindsTo=dev-beast.device
 After=dev-beast.device
 
