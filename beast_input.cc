@@ -8,7 +8,6 @@
 using namespace beast;
 
 enum class SerialInput::ParserState { RESYNC, FIND_1A, TEST_TYPE, READ_1A, READ_TYPE, READ_DATA, READ_ESCAPED_1A };
-enum class SerialInput::ReceiverType { UNKNOWN, BEAST, RADARCAPE };
 
 SerialInput::SerialInput(boost::asio::io_service &service_,
                          const std::string &path_,

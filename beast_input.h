@@ -29,6 +29,8 @@ namespace beast {
         }
     }
 
+    enum class ReceiverType { UNKNOWN, BEAST, RADARCAPE };
+
     class SerialInput : public std::enable_shared_from_this<SerialInput> {
     public:
         typedef std::shared_ptr<SerialInput> pointer;
@@ -83,6 +85,14 @@ namespace beast {
         void start(void);
         void close(void);
 
+        bool is_connected(void) const {
+            return (!first_message);
+        }
+
+        ReceiverType receiver(void) const {
+            return receiver_type;
+        }
+
         // change the input filter to the given filter
         void set_filter(const modes::Filter &filter_);
 
@@ -120,7 +130,6 @@ namespace beast {
         boost::asio::steady_timer reconnect_timer;
 
         // the currently detected receiver type
-        enum class ReceiverType;
         ReceiverType receiver_type;
 
         // settings that are always set, regardless of the filter state
