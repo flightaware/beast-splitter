@@ -176,7 +176,7 @@ namespace splitter {
 
         outf << "  \"time\"     : " << std::chrono::duration_cast<std::chrono::milliseconds>(now - unix_epoch).count() << "," << std::endl
              << "  \"expiry\"   : " << std::chrono::duration_cast<std::chrono::milliseconds>(expiry - unix_epoch).count() << "," << std::endl
-             << "  \"interval\" : " << std::chrono::duration_cast<std::chrono::milliseconds>(timeout_interval).count() << "," << std::endl
+             << "  \"interval\" : " << std::chrono::duration_cast<std::chrono::milliseconds>(timeout_interval).count() << std::endl
              << "}" << std::endl;
         outf.close();
 
