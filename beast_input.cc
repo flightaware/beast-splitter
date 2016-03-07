@@ -418,7 +418,7 @@ void SerialInput::dispatch_message()
     // and for radarcape autodetection
     if (messagetype == modes::MessageType::STATUS) {
         receiving_gps_timestamps = Settings(messagedata[0]).gps_timestamps.on();
-        if (receiver_type == ReceiverType::UNKNOWN) {
+        if (receiver_type != ReceiverType::RADARCAPE) {
             receiver_type = ReceiverType::RADARCAPE;
             autodetect_timer.cancel();
             send_settings_message(); // for the g/G setting
