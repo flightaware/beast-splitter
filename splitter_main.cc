@@ -1,6 +1,7 @@
 #include "beast_input.h"
 #include "beast_output.h"
 #include "modes_filter.h"
+#include "status_writer.h"
 
 #include <boost/asio/ip/address_v4.hpp>
 #include <boost/asio/ip/tcp.hpp>
@@ -89,6 +90,7 @@ static int realmain(int argc, char **argv)
     desc.add_options()
         ("help", "produce help message")
         ("serial", po::value<std::string>()->default_value("/dev/beast"), "set path to serial device")
+        ("status-file", po::value<std::string>(), "set path to status file")
         ("fixed-baud", po::value<unsigned>()->default_value(0), "set a fixed baud rate, or 0 for autobauding")
         ("listen", po::value< std::vector<listen_option> >(), "specify a [host:]port[:settings] to listen on")
         ("connect", po::value< std::vector<connect_option> >(), "specify a host:port[:settings] to connect to")
@@ -157,6 +159,11 @@ static int realmain(int argc, char **argv)
             auto connector = beast::SocketConnector::create(io_service, l.host, l.port, distributor, l.settings);
             connector->start();
         }
+    }
+
+    if (opts.count("status-file")) {
+        auto statuswriter = splitter::StatusWriter::create(io_service, distributor, serial, opts["status-file"].as<std::string>());
+        statuswriter->start();
     }
 
     serial->set_message_notifier(std::bind(&modes::FilterDistributor::broadcast, &distributor, std::placeholders::_1));
