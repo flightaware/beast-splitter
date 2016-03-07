@@ -13,7 +13,9 @@ After=dev-beast.device
 [Service]
 User=beast
 Group=beast
-ExecStart=/usr/bin/beast-splitter --serial /dev/beast --listen 30005:R --connect localhost:30104:R
+RuntimeDirectory=beast-splitter
+RuntimeDirectoryMode=0755
+ExecStart=/usr/bin/beast-splitter --serial /dev/beast --status-file %t/beast-splitter/status.json --listen 30005:R --connect localhost:30104:R
 Type=simple
 Restart=on-failure
 RestartSec=30
