@@ -1,5 +1,5 @@
-beast-splitter (0.1) UNRELEASED; urgency=medium
+beast-splitter (3.0) stable; urgency=medium
 
-  * Initial release. (Closes: #XXXXXX)
+  * Initial release.
 
  -- Oliver Jowett <oliver@mutability.co.uk>  Fri, 08 Jan 2016 22:10:20 +0000
