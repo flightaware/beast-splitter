@@ -128,11 +128,16 @@ $ sudo dpkg -i ../beast-splitter_version_architecture.deb
 Otherwise, try "make" to build a binary. You will need a C++11 compiler (e.g.
 recent g++) and the [Boost library][2].
 
+## git repository
+
+The beast-splitter source is maintained in a repository on [GitHub][3].
+
 ## License
 
-beast-splitter is licensed under the [BSD 2-clause license][3]; see LICENSE.txt.
+beast-splitter is licensed under the [BSD 2-clause license][4]; see LICENSE.txt.
 
 
 [1]: http://www.modesbeast.com/
 [2]: http://www.boost.org/
-[3]: https://opensource.org/licenses/BSD-2-Clause
+[3]: https://github.com/flightaware/beast-splitter
+[4]: https://opensource.org/licenses/BSD-2-Clause
