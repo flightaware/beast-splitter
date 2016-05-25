@@ -1,8 +1,8 @@
 # beast-splitter
 
-This is a helper utility for the Mode-S Beast.
+This is a helper utility for the [Mode-S Beast][1].
 
-The Mode-S Beast provides a single data stream over a (USB) serial port.
+The Beast provides a single data stream over a (USB) serial port.
 If you have more than one thing that wants to read that data stream, you need
 something to redistribute the data. This is what beast-splitter does.
 
@@ -14,8 +14,8 @@ port available as /dev/beast. If the Beast is actually somewhere else, the
 --serial command line option lets you say where.
 
 beast-splitter will try to automatically determine the baud rate that the Beast
-is running at. This may take a few seconds. To explicitly set the baud rate,
-there is a --fixed-baud command line option.
+is running at. This may take a few seconds, longer if there is no traffic.
+To explicitly set the baud rate, there is a --fixed-baud command line option.
 
 beast-splitter will, by default, autodetect the capabilities of the Beast and
 allow clients to request any of the message-filtering options. To force
@@ -95,6 +95,13 @@ and a request _from a client_ to set the 'g' or 'G' option is interpreted as
 setting the 12MHZ/GPS timestamp options. You should set this for connections
 where the client expects to talk to a Radarcape.
 
+## Status file output
+
+If the --status-file option is given, beast-splitter will periodically write
+a json status file to the path given. The status file has information about
+whether communication with the Beast is OK, and for Radarcape-style receivers,
+information extracted from the status message that the receiver generates.
+
 ## Just give me an example
 
 ```
@@ -108,3 +115,24 @@ This will:
    to clients that connect.
  * Establish (and maintain) a connection to localhost, port 30104, and
    send Radarcape-format data there.
+
+## Building beast-splitter
+
+The main way this is built is as a Debian package:
+
+```
+$ dpkg-buildpackage -b
+$ sudo dpkg -i ../beast-splitter_version_architecture.deb
+```
+
+Otherwise, try "make" to build a binary. You will need a C++11 compiler (e.g.
+recent g++) and the [Boost library][2].
+
+## License
+
+beast-splitter is licensed under the [BSD 2-clause license][3]; see LICENSE.txt.
+
+
+[1]: http://www.modesbeast.com/
+[2]: http://www.boost.org/
+[3]: https://opensource.org/licenses/BSD-2-Clause
