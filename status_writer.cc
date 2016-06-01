@@ -38,7 +38,7 @@ namespace asio = boost::asio;
 namespace splitter {
     StatusWriter::StatusWriter(asio::io_service &service_,
                                modes::FilterDistributor &distributor_,
-                               beast::SerialInput::pointer input_,
+                               beast::BeastInput::pointer input_,
                                const std::string &path_)
         : service(service_),
           distributor(distributor_),

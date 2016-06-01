@@ -24,6 +24,7 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "beast_input.h"
+#include "beast_input_serial.h"
 #include "beast_output.h"
 #include "modes_filter.h"
 #include "status_writer.h"

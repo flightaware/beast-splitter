@@ -45,7 +45,7 @@ namespace splitter {
         // factory method, this class must always be constructed via make_shared
         static pointer create(boost::asio::io_service &service,
                               modes::FilterDistributor &distributor,
-                              beast::SerialInput::pointer input,
+                              beast::BeastInput::pointer input,
                               const std::string &path)
         {
             return pointer(new StatusWriter(service, distributor, input, path));
@@ -57,7 +57,7 @@ namespace splitter {
     private:
         StatusWriter(boost::asio::io_service &service_,
                      modes::FilterDistributor &distributor_,
-                     beast::SerialInput::pointer input_,
+                     beast::BeastInput::pointer input_,
                      const std::string &path);
 
         void write(const modes::Message &message);
@@ -68,7 +68,7 @@ namespace splitter {
 
         boost::asio::io_service &service;
         modes::FilterDistributor &distributor;
-        beast::SerialInput::pointer input;
+        beast::BeastInput::pointer input;
         std::string path;
 
         std::string temppath;
