@@ -35,6 +35,8 @@
 namespace beast {
     class SerialInput : public BeastInput {
     public:
+        typedef std::shared_ptr<SerialInput> pointer;
+
         // the standard baud rates to try, in their preferred order
         const std::array<unsigned int,2> autobaud_standard_rates { { 3000000, 1000000 } };
 
@@ -78,7 +80,7 @@ namespace beast {
         bool can_dispatch(void) const override;
 
     private:
-        // construct a new serial input instance and start processing data
+        // construct a new serial input instance, don't start yet
         SerialInput(boost::asio::io_service &service_,
                     const std::string &path_,
                     unsigned int fixed_baud_rate,
