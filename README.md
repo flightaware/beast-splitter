@@ -6,16 +6,26 @@ The Beast provides a single data stream over a (USB) serial port.
 If you have more than one thing that wants to read that data stream, you need
 something to redistribute the data. This is what beast-splitter does.
 
-## Input side
+## Input side - Serial connection
 
 beast-splitter knows how to talk to a Mode-S Beast over a USB serial port.
+You should specify the path to the Beast's serial port with --serial.
 The Debian package includes udev rules that should make the Beast's serial
-port available as /dev/beast. If the Beast is actually somewhere else, the
---serial command line option lets you say where.
+port available as /dev/beast.
 
 beast-splitter will try to automatically determine the baud rate that the Beast
 is running at. This may take a few seconds, longer if there is no traffic.
 To explicitly set the baud rate, there is a --fixed-baud command line option.
+
+## Input side - Network connection
+
+beast-splitter can make an outgoing network connection to receive Beast data if
+you have already made the Beast available via the network. You should give the
+host:port to connect to via the --net option. You can use this to chain
+beast-splitter instances together: specify --listen on the beast-splitter closer
+to the Beast, and --net on the other beast-splitter.
+
+## Configuring Beast settings
 
 beast-splitter will, by default, autodetect the capabilities of the Beast and
 allow clients to request any of the message-filtering options. To force
@@ -23,6 +33,9 @@ particular options on or off on the actual Beast itself, regardless of what
 clients asked for, use the --force command-line option (see below for how to
 specify settings). The "binary format" and "hardware handshake" options are
 always used, you cannot override them with --force.
+
+The options set by beast-splitter will override whatever DIP switch settings
+are set on the Beast itself.
 
 ## Output side
 

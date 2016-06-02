@@ -25,6 +25,7 @@
 
 #include "beast_input.h"
 #include "beast_input_serial.h"
+#include "beast_input_net.h"
 #include "beast_output.h"
 #include "modes_filter.h"
 #include "status_writer.h"
@@ -40,6 +41,11 @@
 namespace po = boost::program_options;
 using boost::asio::ip::tcp;
 
+struct net_option {
+    std::string host;
+    std::string port;
+};
+
 struct output_option {
     std::string host;
     std::string port;
@@ -49,7 +55,26 @@ struct output_option {
 struct listen_option : output_option {};
 struct connect_option : output_option {};
 
-// Specializations of validate for --listen / --connect
+// Specializations of validate for --listen / --connect / --net
+void validate(boost::any& v,
+              const std::vector<std::string>& values,
+              net_option* target_type, int)
+{
+    po::validators::check_first_occurrence(v);
+    const std::string &s = po::validators::get_single_string(values);
+
+    static const boost::regex r("([^:]+):(\\d+)");
+    boost::smatch match;
+    if (boost::regex_match(s, match, r)) {
+        net_option o;
+        o.host = match[1];
+        o.port = match[2];
+        v = boost::any(o);
+    } else {
+        throw po::validation_error(po::validation_error::invalid_option_value);
+    }
+}
+
 void validate(boost::any& v,
               const std::vector<std::string>& values,
               connect_option* target_type, int)
@@ -115,7 +140,8 @@ static int realmain(int argc, char **argv)
     po::options_description desc("Allowed options");
     desc.add_options()
         ("help", "produce help message")
-        ("serial", po::value<std::string>()->default_value("/dev/beast"), "set path to serial device")
+        ("serial", po::value<std::string>(), "read from given serial device")
+        ("net", po::value<net_option>(), "read from given network host:port")
         ("status-file", po::value<std::string>(), "set path to status file")
         ("fixed-baud", po::value<unsigned>()->default_value(0), "set a fixed baud rate, or 0 for autobauding")
         ("listen", po::value< std::vector<listen_option> >(), "specify a [host:]port[:settings] to listen on")
@@ -144,11 +170,25 @@ static int realmain(int argc, char **argv)
         return 1;
     }
 
-    auto serial = beast::SerialInput::create(io_service,
-                                             opts["serial"].as<std::string>(),
-                                             opts["fixed-baud"].as<unsigned>(),
-                                             opts["force"].as<beast::Settings>());
-    distributor.set_filter_notifier(std::bind(&beast::SerialInput::set_filter, serial, std::placeholders::_1));
+    beast::BeastInput::pointer input;
+    if (opts.count("serial")) {
+        input = beast::SerialInput::create(io_service,
+                                           opts["serial"].as<std::string>(),
+                                           opts["fixed-baud"].as<unsigned>(),
+                                           opts["force"].as<beast::Settings>());
+    } else if (opts.count("net")) {
+        auto net = opts["net"].as<net_option>();
+        input = beast::NetInput::create(io_service,
+                                        net.host,
+                                        net.port,
+                                        opts["force"].as<beast::Settings>());
+    } else {
+        std::cerr << "A --serial or --net argument is needed" << std::endl;
+        std::cerr << desc << std::endl;
+        return 1;
+    }
+
+    distributor.set_filter_notifier(std::bind(&beast::BeastInput::set_filter, input, std::placeholders::_1));
 
     tcp::resolver resolver(io_service);
 
@@ -188,12 +228,12 @@ static int realmain(int argc, char **argv)
     }
 
     if (opts.count("status-file")) {
-        auto statuswriter = splitter::StatusWriter::create(io_service, distributor, serial, opts["status-file"].as<std::string>());
+        auto statuswriter = splitter::StatusWriter::create(io_service, distributor, input, opts["status-file"].as<std::string>());
         statuswriter->start();
     }
 
-    serial->set_message_notifier(std::bind(&modes::FilterDistributor::broadcast, &distributor, std::placeholders::_1));
-    serial->start();
+    input->set_message_notifier(std::bind(&modes::FilterDistributor::broadcast, &distributor, std::placeholders::_1));
+    input->start();
 
     io_service.run();
     return 0;
