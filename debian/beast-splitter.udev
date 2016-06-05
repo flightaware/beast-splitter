@@ -2,6 +2,6 @@ ACTION=="remove", GOTO="beast_splitter_end"
 SUBSYSTEM!="tty", GOTO="beast_splitter_end"
 
 IMPORT{builtin}="usb_id"
-ENV{ID_MODEL}=="Mode-S_Beast*", ENV{ID_USB_INTERFACE_NUM}=="00", SYMLINK+="beast", TAG+="systemd", ENV{SYSTEMD_WANTS}="beast-splitter.service", MODE="0660", GROUP="beast"
+ENV{ID_MODEL}=="Mode-S_Beast*", ENV{ID_USB_INTERFACE_NUM}=="00", SYMLINK+="beast", MODE="0660", GROUP="beast"
 
 LABEL="beast_splitter_end"

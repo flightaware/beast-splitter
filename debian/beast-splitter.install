@@ -1,1 +1,2 @@
 beast-splitter usr/bin
+debian/start-beast-splitter usr/bin

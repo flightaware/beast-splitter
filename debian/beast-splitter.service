@@ -6,16 +6,18 @@ Description=Mode S Beast data forwarder
 Documentation=https://github.com/flightaware/beast-splitter
 Wants=network.target
 After=network.target
-Requisite=dev-beast.device
-BindsTo=dev-beast.device
-After=dev-beast.device
 
 [Service]
 User=beast
 Group=beast
 RuntimeDirectory=beast-splitter
 RuntimeDirectoryMode=0755
-ExecStart=/usr/bin/beast-splitter --serial /dev/beast --status-file %t/beast-splitter/status.json --listen 30005:R --connect localhost:30104:R
+ExecStart=/usr/bin/start-beast-splitter --status-file %t/beast-splitter/status.json
+SyslogIdentifier=beast-splitter
 Type=simple
 Restart=on-failure
 RestartSec=30
+SuccessExitStatus=64
+
+[Install]
+WantedBy=default.target

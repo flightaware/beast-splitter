@@ -1,0 +1,21 @@
+#!/bin/sh
+
+# Helper script that reads /etc/default/beast-splitter
+# and either starts beast-splitter with the configured
+# arguments, or exits with status 64 to tell systemd
+# not to auto-restart the service.
+
+if [ -f /etc/default/beast-splitter ]
+then
+  . /etc/default/beast-splitter
+fi
+
+if [ "x$ENABLED" != "xyes" ]
+then
+  echo "beast-splitter not enabled in /etc/default/beast-splitter" >&2
+  exit 64
+fi
+
+exec /usr/bin/beast-splitter $INPUT_OPTIONS $OUTPUT_OPTIONS "$@"
+# exec failed, do not restart
+exit 64
