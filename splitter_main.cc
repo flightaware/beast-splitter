@@ -132,6 +132,8 @@ namespace beast {
     }
 }
 
+#define EXIT_NO_RESTART (64)
+
 static int realmain(int argc, char **argv)
 {
     boost::asio::io_service io_service;
@@ -156,18 +158,18 @@ static int realmain(int argc, char **argv)
     } catch (boost::program_options::error &err) {
         std::cerr << err.what() << std::endl;
         std::cerr << desc << std::endl;
-        return 1;
+        return EXIT_NO_RESTART;
     }
 
     if (opts.count("help")) {
         std::cerr << desc << std::endl;
-        return 0;
+        return EXIT_NO_RESTART;
     }
 
     if (!opts.count("connect") && !opts.count("listen")) {
         std::cerr << "At least one --connect or --listen argument is needed" << std::endl;
         std::cerr << desc << std::endl;
-        return 1;
+        return EXIT_NO_RESTART;
     }
 
     beast::BeastInput::pointer input;
@@ -185,7 +187,7 @@ static int realmain(int argc, char **argv)
     } else {
         std::cerr << "A --serial or --net argument is needed" << std::endl;
         std::cerr << desc << std::endl;
-        return 1;
+        return EXIT_NO_RESTART;
     }
 
     distributor.set_filter_notifier(std::bind(&beast::BeastInput::set_filter, input, std::placeholders::_1));
@@ -248,6 +250,6 @@ int main(int argc, char **argv)
         return realmain(argc, argv);
     } catch (std::exception &e) {
         std::cerr << "Uncaught exception: " << e.what() << std::endl;
-        return 99;
+        return 2;
     }
 }
