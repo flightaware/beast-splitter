@@ -214,8 +214,11 @@ static int realmain(int argc, char **argv)
             }
 
             if (!success) {
-                std::cerr << "Could not bind to any addresses of " << l.host << ": " << ec.message() << std::endl;
-                return 2;
+                if (l.host.empty())
+                    std::cerr << "Could not bind to port " << l.port << ": " << ec.message() << std::endl;
+                else
+                    std::cerr << "Could not bind to " << l.host << ":" << l.port << ": " << ec.message() << std::endl;
+                return 1;
             }
         }
     }
