@@ -141,6 +141,14 @@ $ sudo dpkg -i ../beast-splitter_version_architecture.deb
 Otherwise, try "make" to build a binary. You will need a C++11 compiler (e.g.
 recent g++) and the [Boost library][2].
 
+## Configuring beast-splitter when installed as a package
+
+If you installed the Debian package, then it installs a systemd service that
+can automatically start beast-splitter. It is disabled by default. To configure
+this, edit /etc/default/beast-splitter and set ENABLED=yes (plus any other
+configuration you want), then "systemctl restart beast-splitter" to pick up
+the configuration changes.
+
 ## git repository
 
 The beast-splitter source is maintained in a repository on [GitHub][3].
