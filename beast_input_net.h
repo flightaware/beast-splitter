@@ -57,7 +57,7 @@ namespace beast {
         std::string what() const override;
         void try_to_connect(void) override;
         void disconnect(void) override;
-        void low_level_write(std::shared_ptr<helpers::bytebuf> message) override;
+        bool low_level_write(std::shared_ptr<helpers::bytebuf> message) override;
 
     private:
         // construct a new net input instance, don't start yet

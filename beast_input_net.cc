@@ -119,10 +119,10 @@ void NetInput::disconnect()
     }
 }
 
-void NetInput::low_level_write(std::shared_ptr<helpers::bytebuf> message)
+bool NetInput::low_level_write(std::shared_ptr<helpers::bytebuf> message)
 {
     if (!socket.is_open())
-        return;
+        return false;
 
     auto self(shared_from_this());
     boost::asio::async_write(socket, boost::asio::buffer(*message),
@@ -130,6 +130,7 @@ void NetInput::low_level_write(std::shared_ptr<helpers::bytebuf> message)
                                  if (ec)
                                      handle_error(ec);
                              });
+    return true;
 }
 
 void NetInput::handle_error(const boost::system::error_code &ec)

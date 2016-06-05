@@ -108,10 +108,10 @@ void SerialInput::disconnect()
     }
 }
 
-void SerialInput::low_level_write(std::shared_ptr<helpers::bytebuf> message)
+bool SerialInput::low_level_write(std::shared_ptr<helpers::bytebuf> message)
 {
     if (!port.is_open())
-        return;
+        return false;
 
     auto self(shared_from_this());
     boost::asio::async_write(port, boost::asio::buffer(*message),
@@ -119,6 +119,7 @@ void SerialInput::low_level_write(std::shared_ptr<helpers::bytebuf> message)
                                  if (ec)
                                      handle_error(ec);
                              });
+    return true;
 }
 
 void SerialInput::handle_error(const boost::system::error_code &ec)

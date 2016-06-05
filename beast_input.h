@@ -110,7 +110,7 @@ namespace beast {
         virtual std::string what() const = 0;
         virtual void try_to_connect() = 0;
         virtual void disconnect() = 0;
-        virtual void low_level_write(std::shared_ptr<helpers::bytebuf> message) = 0;
+        virtual bool low_level_write(std::shared_ptr<helpers::bytebuf> message) = 0;
 
     private:
         void send_settings_message(void);

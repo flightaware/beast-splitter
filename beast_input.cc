@@ -117,11 +117,11 @@ void BeastInput::send_settings_message()
     settings.binary_format = true;
     settings.rts_handshake = true;
 
-    std::cerr << what() << ": configured with settings: " << settings.apply_defaults() << std::endl;
-
     // send it
     auto message = std::make_shared<helpers::bytebuf>(settings.to_message());
-    low_level_write(message);
+    if (low_level_write(message)) {
+        std::cerr << what() << ": configured with settings: " << settings.apply_defaults() << std::endl;
+    }
 }
 
 void BeastInput::set_filter(const modes::Filter &newfilter)
