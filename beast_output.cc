@@ -60,15 +60,16 @@ namespace beast {
         auto self(shared_from_this());
         auto buf = std::make_shared< std::vector<std::uint8_t> >(512);
 
-        async_read(socket, asio::buffer(*buf),
-                   [this,self,buf] (const boost::system::error_code &ec, std::size_t len) {
-                       if (ec) {
-                           handle_error(ec);
-                       } else {
-                           process_commands(*buf);
-                           read_commands();
-                       }
-                   });
+        socket.async_read_some(asio::buffer(*buf),
+                               [this,self,buf] (const boost::system::error_code &ec, std::size_t len) {
+                                   if (ec) {
+                                       handle_error(ec);
+                                   } else {
+                                       buf->resize(len);
+                                       process_commands(*buf);
+                                       read_commands();
+                                   }
+                               });
     }
 
     void SocketOutput::process_commands(std::vector<std::uint8_t> data)
