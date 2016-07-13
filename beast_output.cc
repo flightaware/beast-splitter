@@ -158,10 +158,18 @@ namespace beast {
 
         if (message.type() == modes::MessageType::STATUS) {
             // local connection settings override the upstream data
-            Settings used = settings | Settings(message.data()[0]);
+            Settings upstream = Settings(message.data()[0]);
+            Settings used = settings | upstream;
 
             auto copy = message.data();
             copy[0] = used.to_status_byte();
+
+            if (settings.gps_timestamps.on() && !upstream.gps_timestamps.on()) {
+                // we are translating 12MHz to "GPS", set the emulation flag
+                copy[2] |= 0x80; // set UTC-bugfix-and-more-bits flag
+                copy[2] |= 0x20; // set emulated-timestamp flag
+            }
+
             write_message(message.type(),
                           message.timestamp_type(),
                           message.timestamp(),
