@@ -74,6 +74,8 @@ namespace beast {
 
     void SocketOutput::process_commands(std::vector<std::uint8_t> data)
     {
+        bool got_a_command = false;
+
         for (auto p = data.begin(); p != data.end(); ++p) {
             switch (state) {
             case ParserState::FIND_1A:
@@ -90,9 +92,17 @@ namespace beast {
 
             case ParserState::READ_OPTION:
                 process_option_command(*p);
+                got_a_command = true;
                 state = ParserState::FIND_1A;
                 break;
             }
+        }
+
+        if (got_a_command) {
+            // just do this once at the end, not on every command
+            std::cerr << peer << ": settings changed to " << settings << std::endl;
+            if (settings_notifier)
+                settings_notifier(settings);
         }
     }
 
@@ -139,10 +149,6 @@ namespace beast {
             // unrecognized
             return;
         }
-
-        std::cerr << peer << ": settings changed to " << settings << std::endl;
-        if (settings_notifier)
-            settings_notifier(settings);
     }
 
     void SocketOutput::write(const modes::Message &message)
