@@ -24,6 +24,7 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <iomanip>
+#include <iostream>
 
 #include <boost/asio.hpp>
 #include <boost/asio/steady_timer.hpp>

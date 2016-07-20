@@ -25,6 +25,7 @@
 
 #include <algorithm>
 #include <iomanip>
+#include <iostream>
 #include <boost/asio.hpp>
 
 #include "beast_input_serial.h"
