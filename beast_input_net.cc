@@ -25,6 +25,7 @@
 
 #include <algorithm>
 #include <iomanip>
+#include <iostream>
 
 #include <boost/asio.hpp>
 #include <boost/asio/steady_timer.hpp>
