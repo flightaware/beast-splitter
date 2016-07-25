@@ -1,3 +1,9 @@
+beast-splitter (3.0.2~dev) UNRELEASED; urgency=medium
+
+  * In development
+
+ -- Oliver Jowett <oliver@travel>  Mon, 25 Jul 2016 13:05:49 +0100
+
 beast-splitter (3.0.1) stable; urgency=medium
 
   * Release to github
