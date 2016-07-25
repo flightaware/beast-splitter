@@ -75,11 +75,20 @@ void SerialInput::try_to_connect(void)
             port.cancel();
         else
             port.open(path);
+
         port.set_option(boost::asio::serial_port_base::character_size(8));
         port.set_option(boost::asio::serial_port_base::stop_bits(boost::asio::serial_port_base::stop_bits::one));
         port.set_option(boost::asio::serial_port_base::parity(boost::asio::serial_port_base::parity::none));
-        port.set_option(boost::asio::serial_port_base::flow_control(boost::asio::serial_port_base::flow_control::hardware));
         port.set_option(boost::asio::serial_port_base::baud_rate(baud_rate));
+
+        try {
+            port.set_option(boost::asio::serial_port_base::flow_control(boost::asio::serial_port_base::flow_control::hardware));
+        } catch (const boost::system::system_error &err) {
+            std::cerr << "Got '" << err.code().message() << "' setting hardware flow control." << std::endl;
+            std::cerr << "This is probably a Boost bug. Continuing with no flow control." << std::endl;
+
+            port.set_option(boost::asio::serial_port_base::parity(boost::asio::serial_port_base::parity::none));
+        }
     } catch (const boost::system::system_error &err) {
         handle_error(err.code());
         return;
