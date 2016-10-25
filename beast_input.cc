@@ -301,6 +301,7 @@ void BeastInput::dispatch_message()
             send_settings_message(); // for the g/G setting
         }
 
+        auto self(shared_from_this());
         liveness_timer.expires_from_now(radarcape_liveness_interval);
         liveness_timer.async_wait([this,self] (const boost::system::error_code &ec) {
                 if (!ec) {
