@@ -44,6 +44,7 @@ BeastInput::BeastInput(boost::asio::io_service &service_,
       receiving_gps_timestamps(false),
       autodetect_timer(service_),
       reconnect_timer(service_),
+      liveness_timer(service_),
       good_sync(false),
       good_messages_count(0),
       bad_bytes_count(0),
@@ -299,6 +300,15 @@ void BeastInput::dispatch_message()
             autodetect_timer.cancel();
             send_settings_message(); // for the g/G setting
         }
+
+        liveness_timer.expires_from_now(radarcape_liveness_interval);
+        liveness_timer.async_wait([this,self] (const boost::system::error_code &ec) {
+                if (!ec) {
+                    std::cerr << what() << ": no recent status messages received" << std::endl;
+                    disconnect();
+                    connection_failed();
+                }
+            });
     }
 
     if (!can_dispatch())

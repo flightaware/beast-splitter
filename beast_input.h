@@ -67,6 +67,10 @@ namespace beast {
         // isn't a radarcape
         const std::chrono::milliseconds radarcape_detect_interval = std::chrono::seconds(3);
 
+        // how long to wait for a radarcape status message (when in radarcape mode)
+        // before assuming the connection is dead
+        const std::chrono::milliseconds radarcape_liveness_interval = std::chrono::seconds(15);
+
         // message notifier type
         typedef std::function<void(const modes::Message &)> MessageNotifier;
 
@@ -137,6 +141,9 @@ namespace beast {
 
         // timer that expires after reconnect_interval
         boost::asio::steady_timer reconnect_timer;
+
+        // timer that expires after radarcape_liveness_interval
+        boost::asio::steady_timer liveness_timer;
 
         // are we currently in sync?
         bool good_sync;
