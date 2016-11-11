@@ -1,3 +1,9 @@
+beast-splitter (3.3.0~dev) UNRELEASED; urgency=medium
+
+  * In development.
+
+ -- Oliver Jowett <oliver@mutability.co.uk>  Fri, 11 Nov 2016 19:43:44 +0000
+
 beast-splitter (3.2.0) stable; urgency=medium
 
   * When handling radarcape-style input, require a status message regularly
