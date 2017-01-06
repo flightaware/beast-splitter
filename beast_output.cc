@@ -212,10 +212,10 @@ namespace beast {
         if (settings.binary_format) {
             write_binary(type, timestamp, signal, data);
         } else if (settings.avrmlat) {
-            if (type != modes::MessageType::STATUS)
+            if (type != modes::MessageType::STATUS && type != modes::MessageType::POSITION)
                 write_avrmlat(timestamp, data);
         } else {
-            if (type != modes::MessageType::STATUS)
+            if (type != modes::MessageType::STATUS && type != modes::MessageType::POSITION)
                 write_avr(data);
         }
     }
@@ -280,13 +280,15 @@ namespace beast {
         outbuf->push_back(0x1A);
         outbuf->push_back(messagetype_to_byte(type));
 
-        push_back_beast(*outbuf, (timestamp >> 40) & 0xFF);
-        push_back_beast(*outbuf, (timestamp >> 32) & 0xFF);
-        push_back_beast(*outbuf, (timestamp >> 24) & 0xFF);
-        push_back_beast(*outbuf, (timestamp >> 16) & 0xFF);
-        push_back_beast(*outbuf, (timestamp >> 8) & 0xFF);
-        push_back_beast(*outbuf, timestamp & 0xFF);
-        push_back_beast(*outbuf, signal);
+        if (type != modes::MessageType::POSITION) {
+            push_back_beast(*outbuf, (timestamp >> 40) & 0xFF);
+            push_back_beast(*outbuf, (timestamp >> 32) & 0xFF);
+            push_back_beast(*outbuf, (timestamp >> 24) & 0xFF);
+            push_back_beast(*outbuf, (timestamp >> 16) & 0xFF);
+            push_back_beast(*outbuf, (timestamp >> 8) & 0xFF);
+            push_back_beast(*outbuf, timestamp & 0xFF);
+            push_back_beast(*outbuf, signal);
+        }
 
         for (auto b : data)
             push_back_beast(*outbuf, b);

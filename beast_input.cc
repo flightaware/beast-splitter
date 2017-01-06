@@ -325,15 +325,24 @@ void BeastInput::dispatch_message()
         return;
 
     // basic decoding, then pass it on.
-    std::uint64_t timestamp =
-        ((std::uint64_t)metadata[0] << 40) |
-        ((std::uint64_t)metadata[1] << 32) |
-        ((std::uint64_t)metadata[2] << 24) |
-        ((std::uint64_t)metadata[3] << 16) |
-        ((std::uint64_t)metadata[4] << 8) |
-        ((std::uint64_t)metadata[5]);
+    std::uint64_t timestamp = 0;
+    std::uint8_t signal = 0;
 
-    std::uint8_t signal = metadata[6];
+    if (messagetype == modes::MessageType::POSITION) {
+        // position messages are special, they use the metadata area for actual data
+        // so glue the metadata bytes onto the start of the data bytes and don't decode
+        // timestamp/signal
+        messagedata.insert(messagedata.begin(), metadata.cbegin(), metadata.cend());
+    } else {
+        timestamp = ((std::uint64_t)metadata[0] << 40) |
+            ((std::uint64_t)metadata[1] << 32) |
+            ((std::uint64_t)metadata[2] << 24) |
+            ((std::uint64_t)metadata[3] << 16) |
+            ((std::uint64_t)metadata[4] << 8) |
+            ((std::uint64_t)metadata[5]);
+
+        signal = metadata[6];
+    }
 
     // dispatch it
     message_notifier(modes::Message(messagetype,

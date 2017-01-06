@@ -149,6 +149,7 @@ namespace beast {
         f.receive_fec = !fec_disable;
         f.receive_status = !radarcape.off();
         f.receive_gps_timestamps = !radarcape.off() && !gps_timestamps.off();
+        f.receive_position = position_enable;
 
         return f;
     }

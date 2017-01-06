@@ -50,6 +50,7 @@ namespace beast {
         case 0x32: return modes::MessageType::MODE_S_SHORT;
         case 0x33: return modes::MessageType::MODE_S_LONG;
         case 0x34: return modes::MessageType::STATUS;
+        case 0x35: return modes::MessageType::POSITION;
         default: return modes::MessageType::INVALID;
         }
     }

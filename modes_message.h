@@ -42,7 +42,8 @@ namespace modes {
         MODE_AC,
         MODE_S_SHORT,
         MODE_S_LONG,
-        STATUS
+        STATUS,
+        POSITION
     };
 
     enum class TimestampType { UNKNOWN, TWELVEMEG, GPS };
@@ -53,6 +54,7 @@ namespace modes {
         case MessageType::MODE_S_SHORT: return (os << "MODE_S_SHORT");
         case MessageType::MODE_S_LONG: return (os << "MODE_S_LONG");
         case MessageType::STATUS: return (os << "STATUS");
+        case MessageType::POSITION: return (os << "POSITION");
         default: return (os << "INVALID");
         }
     }
@@ -66,6 +68,7 @@ namespace modes {
         case MessageType::MODE_S_SHORT: return 7;
         case MessageType::MODE_S_LONG: return 14;
         case MessageType::STATUS: return 14;
+        case MessageType::POSITION: return 14;
         default: return 0;
         }
     }

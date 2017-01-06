@@ -33,7 +33,8 @@ namespace modes {
           receive_bad_crc(false),
           receive_fec(false),
           receive_status(false),
-          receive_gps_timestamps(false)
+          receive_gps_timestamps(false),
+          receive_position(false)
     {
         receive_df.fill(false);
     }
@@ -47,6 +48,7 @@ namespace modes {
         receive_fec = receive_fec || two.receive_fec;
         receive_status = receive_status || two.receive_status;
         receive_gps_timestamps = receive_gps_timestamps || two.receive_gps_timestamps;
+        receive_position = receive_position || two.receive_position;
     }
 
     Filter Filter::combine(const Filter &one, const Filter &two)
@@ -66,6 +68,7 @@ namespace modes {
                 receive_fec == other.receive_fec &&
                 receive_status == other.receive_status &&
                 receive_gps_timestamps == other.receive_gps_timestamps &&
+                receive_position == other.receive_position &&
                 receive_df == other.receive_df);
     }
 
@@ -83,8 +86,12 @@ namespace modes {
             os << "badcrc ";
         if (f.receive_fec)
             os << "fec ";
+        if (f.receive_status)
+            os << "status ";
         if (f.receive_gps_timestamps)
             os << "gps ";
+        if (f.receive_position)
+            os << "position ";
         for (std::size_t i = 0; i < f.receive_df.size(); ++i)
             if (f.receive_df[i])
                 os << i << " ";

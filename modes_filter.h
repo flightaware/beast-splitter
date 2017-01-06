@@ -41,6 +41,7 @@ namespace modes {
         bool receive_fec;
         bool receive_status;
         bool receive_gps_timestamps;
+        bool receive_position;
 
         Filter();
 
@@ -63,6 +64,8 @@ namespace modes {
                 if (message.crc_bad() && !receive_bad_crc)
                     return false;
                 return true;
+            case MessageType::POSITION:
+                return receive_position;
 
             default:
                 // what is this?
