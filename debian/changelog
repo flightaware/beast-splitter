@@ -1,10 +1,10 @@
-beast-splitter (3.3.0~dev) UNRELEASED; urgency=medium
+beast-splitter (3.3.0) stable; urgency=medium
 
   * Minor tweak to how settings are logged.
   * Support for forwarding type 5 (radarcape position) messages
   * Rebuild for PiAware 3.3.0
 
- -- Oliver Jowett <oliver@mutability.co.uk>  Fri, 11 Nov 2016 19:43:44 +0000
+ -- Oliver Jowett <oliver@mutability.co.uk>  Mon, 16 Jan 2017 17:01:01 +0000
 
 beast-splitter (3.2.0) stable; urgency=medium
 
