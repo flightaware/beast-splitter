@@ -1,3 +1,9 @@
+beast-splitter (3.4.0) stable; urgency=medium
+
+  * No-change release for PiAware 3.4.0
+
+ -- Oliver Jowett <oliver@mutability.co.uk>  Thu, 09 Feb 2017 17:47:23 +0000
+
 beast-splitter (3.3.0) stable; urgency=medium
 
   * Minor tweak to how settings are logged.
