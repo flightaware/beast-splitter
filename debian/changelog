@@ -1,3 +1,9 @@
+beast-splitter (3.6.1~dev) UNRELEASED; urgency=medium
+
+  * No-change release for PiAware 3.6.1 / jessie backport versioning
+
+ -- Oliver Jowett <oliver@mutability.co.uk>  Thu, 12 Jul 2018 15:56:28 +0100
+
 beast-splitter (3.6.0) stable; urgency=medium
 
   * No-change release for PiAware 3.6.0
