@@ -1,3 +1,10 @@
+beast-splitter (3.6.3~dev) UNRELEASED; urgency=medium
+
+  * Skip 3.6.2 to keep versions in sync with PiAware
+  * in development
+
+ -- Oliver Jowett <oliver@mutability.co.uk>  Tue, 28 Aug 2018 20:31:52 +0100
+
 beast-splitter (3.6.1) stable; urgency=medium
 
   * No-change release for PiAware 3.6.1 / jessie backport versioning
