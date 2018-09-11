@@ -1,9 +1,9 @@
-beast-splitter (3.6.3~dev) UNRELEASED; urgency=medium
+beast-splitter (3.6.3) stable; urgency=medium
 
   * Skip 3.6.2 to keep versions in sync with PiAware
-  * in development
+  * Build automation
 
- -- Oliver Jowett <oliver@mutability.co.uk>  Tue, 28 Aug 2018 20:31:52 +0100
+ -- Oliver Jowett <oliver@mutability.co.uk>  Tue, 11 Sep 2018 14:59:07 +0100
 
 beast-splitter (3.6.1) stable; urgency=medium
 
