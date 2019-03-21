@@ -1,8 +1,9 @@
-beast-splitter (3.7.0~dev) UNRELEASED; urgency=medium
+beast-splitter (3.7.0) stable; urgency=medium
 
-  * No-change release for PiAware 3.7.0
+  * Move start-beast-splitter into /usr/share
+  * Release for PiAware 3.7.0
 
- -- Eric Tran <eric.tran@flightaware.com>  Mon, 11 Mar 2019 10:47:00 -0600
+ -- Oliver Jowett <oliver@mutability.co.uk>  Thu, 21 Mar 2019 22:56:23 +0000
 
 beast-splitter (3.6.3) stable; urgency=medium
 
