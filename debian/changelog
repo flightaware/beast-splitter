@@ -1,3 +1,9 @@
+beast-splitter (3.7.1) stable; urgency=medium
+
+  * No-change release for PiAware 3.7.1
+
+ -- Eric Tran <eric.tran@flightaware.com>  Mon, 15 Apr 2019 01:03:00 -6000
+
 beast-splitter (3.7.0.1) stable; urgency=medium
 
   * No-change release for PiAware 3.7.0.1
