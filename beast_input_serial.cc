@@ -23,6 +23,10 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+// Try to convince asio to support serial port hardware flow control
+#define _DEFAULT_SOURCE
+#define _BSD_SOURCE
+
 #include <algorithm>
 #include <iomanip>
 #include <iostream>
@@ -81,13 +85,11 @@ void SerialInput::try_to_connect(void)
         port.set_option(boost::asio::serial_port_base::parity(boost::asio::serial_port_base::parity::none));
         port.set_option(boost::asio::serial_port_base::baud_rate(baud_rate));
 
-        try {
-            port.set_option(boost::asio::serial_port_base::flow_control(boost::asio::serial_port_base::flow_control::hardware));
-        } catch (const boost::system::system_error &err) {
-            std::cerr << "Got '" << err.code().message() << "' setting hardware flow control." << std::endl;
-            std::cerr << "This is probably a Boost bug. Continuing with no flow control." << std::endl;
-
-            port.set_option(boost::asio::serial_port_base::parity(boost::asio::serial_port_base::parity::none));
+        // not_supported usually means a library build problem, ignore that
+        boost::system::error_code ec;
+        port.set_option(boost::asio::serial_port_base::flow_control(boost::asio::serial_port_base::flow_control::hardware), ec);
+        if (ec && ec != boost::asio::error::operation_not_supported) {
+            throw boost::system::system_error(ec);
         }
     } catch (const boost::system::system_error &err) {
         handle_error(err.code());
