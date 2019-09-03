@@ -34,13 +34,11 @@ node(label: 'raspberrypi') {
         }
     }
 
-    if (env.BRANCH_NAME == "master" || env.BRANCH_NAME == "dev") {
-        stage("Deploy to staging repo") {
-            for (int i = 0; i < dists.size(); ++i) {
-                def dist = dists[i]
-                def results = "results-${dist}"
-                sh "/build/repo/deploy-packages.sh ${dist} ${results}/*.deb"
-            }
+    stage('Deploy to internal repository') {
+        for (int i = 0; i < dists.size(); ++i) {
+            def dist = dists[i]
+            def results = "results-${dist}"
+            sh "/build/repo/deploy.sh -distribution ${dist} -branch ${env.BRANCH_NAME} ${results}/*.deb"
         }
     }
 }
