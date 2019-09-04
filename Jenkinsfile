@@ -30,7 +30,7 @@ node(label: 'raspberrypi') {
         }
 
         stage("Test install on ${dist}") {
-            sh "BRANCH=${env.BRANCH_NAME} /build/repo/validate-packages.sh ${dist} ${results}/beast-splitter_*.deb"
+            sh "BRANCH=${env.BRANCH_NAME} /build/pi-builder/scripts/validate-packages.sh ${dist} ${results}/beast-splitter_*.deb"
         }
     }
 
@@ -38,7 +38,7 @@ node(label: 'raspberrypi') {
         for (int i = 0; i < dists.size(); ++i) {
             def dist = dists[i]
             def results = "results-${dist}"
-            sh "/build/repo/deploy.sh -distribution ${dist} -branch ${env.BRANCH_NAME} ${results}/*.deb"
+            sh "/build/pi-builder/scripts/deploy.sh -distribution ${dist} -branch ${env.BRANCH_NAME} ${results}/*.deb"
         }
     }
 }
