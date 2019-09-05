@@ -1,4 +1,9 @@
 node(label: 'raspberrypi') {
+    properties([
+        disableConcurrentBuilds(),
+        durabilityHint(hint: 'PERFORMANCE_OPTIMIZED')
+    ])
+
     def dists = ["stretch", "jessie"]
     def srcdir = "${WORKSPACE}/src"
 
