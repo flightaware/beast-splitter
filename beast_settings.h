@@ -72,6 +72,10 @@ namespace beast {
                 return (state == 0);
             }
 
+            void clear() {
+                state = 0;
+            }
+
             // operator+ combines two settings with equal weight
             // given to both.
             //

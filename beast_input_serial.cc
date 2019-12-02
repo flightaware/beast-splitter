@@ -253,3 +253,10 @@ bool SerialInput::can_dispatch() const
     return (!autobauding && BeastInput::can_dispatch());
 }
 
+void SerialInput::apply_connection_settings(Settings &settings)
+{
+    // always request RTS/CTS handshaking
+    settings.rts_handshake = true;
+    // never send v/V commands
+    settings.verbatim.clear();
+}

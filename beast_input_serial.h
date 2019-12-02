@@ -78,6 +78,7 @@ namespace beast {
         bool low_level_write(std::shared_ptr<helpers::bytebuf> message) override;
         void saw_good_message(void) override;
         bool can_dispatch(void) const override;
+        void apply_connection_settings(Settings &settings) override;
 
     private:
         // construct a new serial input instance, don't start yet

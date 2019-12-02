@@ -117,7 +117,9 @@ void BeastInput::send_settings_message()
     // some hardcoded things we expect
     settings.radarcape = (receiver_type == ReceiverType::RADARCAPE);
     settings.binary_format = true;
-    settings.rts_handshake = true;
+
+    // subclass-specific settings
+    apply_connection_settings(settings);
 
     // send it
     auto message = std::make_shared<helpers::bytebuf>(settings.to_message());

@@ -116,6 +116,7 @@ namespace beast {
         virtual void try_to_connect() = 0;
         virtual void disconnect() = 0;
         virtual bool low_level_write(std::shared_ptr<helpers::bytebuf> message) = 0;
+        virtual void apply_connection_settings(Settings &settings) {}
 
     private:
         void send_settings_message(void);
