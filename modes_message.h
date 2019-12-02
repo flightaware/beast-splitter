@@ -188,21 +188,20 @@ namespace modes {
 
         int crc_correctable_bit() const {
             if (m_correctable_bit == -2) {
-                std::uint32_t residual;
                 switch (df()) {
                 case 11:
                     // For DF11, don't mask off the lower 7 bits
                     // i.e. try to correct under the assumption that IID=0
+                    m_correctable_bit = crc::correctable_bit_short(crc_residual());
+                    break;
                 case 17:
                 case 18:
-                    residual = crc_residual();
+                    m_correctable_bit = crc::correctable_bit_long(crc_residual());
+                    break;
                 default:
-                    return false;
-                }
-
-                m_correctable_bit = crc::correctable_bit(residual);
-                if (m_correctable_bit >= (int)m_data.size())
                     m_correctable_bit = -1;
+                    break;
+                }
             }
 
             return m_correctable_bit;

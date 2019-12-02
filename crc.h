@@ -35,7 +35,8 @@
 namespace crc {
     namespace detail {
         extern std::uint32_t crc_table[256];
-        extern std::map<std::uint32_t, unsigned> syndromes;
+        extern std::map<std::uint32_t, unsigned> syndromes_short;
+        extern std::map<std::uint32_t, unsigned> syndromes_long;
         void init_syndromes();
     }; // namespace detail
 
@@ -64,15 +65,22 @@ namespace crc {
     }
 
     // Interpret a CRC residual as a syndrome and for syndromes that correspond
-    // to a single bit error, return the affected bit position (0..111).
+    // to a single bit error, return the affected bit position
     //
     // If the syndrome is not correctable, return -1.
 
-    inline int correctable_bit(std::uint32_t syndrome) {
-        if (detail::syndromes.empty())
+    inline int correctable_bit_short(std::uint32_t syndrome) {
+        if (detail::syndromes_short.empty())
             detail::init_syndromes();
-        auto correction = detail::syndromes.find(syndrome);
-        return (correction != detail::syndromes.end()) ? correction->second : -1;
+        auto correction = detail::syndromes_short.find(syndrome);
+        return (correction != detail::syndromes_short.end()) ? correction->second : -1;
+    }
+
+    inline int correctable_bit_long(std::uint32_t syndrome) {
+        if (detail::syndromes_long.empty())
+            detail::init_syndromes();
+        auto correction = detail::syndromes_long.find(syndrome);
+        return (correction != detail::syndromes_long.end()) ? correction->second : -1;
     }
 
 }; // namespace crc

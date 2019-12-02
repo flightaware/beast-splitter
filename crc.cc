@@ -44,16 +44,24 @@ namespace crc::detail {
     std::uint32_t crc_table[256] = { BOOST_PP_ENUM(256, CRCGEN, _) };
 #undef CRCGEN
 
-    std::map<std::uint32_t,unsigned> syndromes;
+    std::map<std::uint32_t,unsigned> syndromes_short;
+    std::map<std::uint32_t,unsigned> syndromes_long;
 
     void init_syndromes() {
-        syndromes.clear();
+        syndromes_short.clear();
+        std::vector<std::uint8_t> message_short(56 / 8);
+        for (unsigned i = 5; i < 56; ++i) {
+            message_short[i/8] ^= 1 << (7 - (i & 7));
+            syndromes_short[message_residual(message_short)] = i;
+            message_short[i/8] ^= 1 << (7 - (i & 7));
+        }
 
-        std::vector<std::uint8_t> message(112 / 8);
+        syndromes_long.clear();
+        std::vector<std::uint8_t> message_long(112 / 8);
         for (unsigned i = 5; i < 112; ++i) {
-            message[i/8] ^= 1 << (7 - (i & 7));
-            syndromes[message_residual(message)] = i;
-            message[i/8] ^= 1 << (7 - (i & 7));
+            message_long[i/8] ^= 1 << (7 - (i & 7));
+            syndromes_long[message_residual(message_long)] = i;
+            message_long[i/8] ^= 1 << (7 - (i & 7));
         }
     }
 }; // namespace crc::detail
