@@ -123,7 +123,7 @@ namespace beast {
         po::validators::check_first_occurrence(v);
         const std::string &s = po::validators::get_single_string(values);
 
-        static const boost::regex r("[cdefghijbrCDEFGHIJBR]*");
+        static const boost::regex r("[cdefghijbrvCDEFGHIJBRV]*");
         if (boost::regex_match(s, r)) {
             v = boost::any(beast::Settings(s));
         } else {
