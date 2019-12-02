@@ -56,6 +56,12 @@ namespace beast {
                 break;
             }
         }
+
+        // only enable verbatim if someone downstream requested it; otherwise
+        // leave it as DONTCARE to avoid generating 'v'-setting messages if we
+        // can avoid it
+        if (filter.receive_verbatim)
+            verbatim = true;
     }
 
     Settings::Settings(const std::string &str)
@@ -84,6 +90,8 @@ namespace beast {
             case 'J': modeac_enable = true; break;
             case 'k': filter_0_4_5 = false; break; // this is g/G on the Beast, but we separate it out
             case 'K': filter_0_4_5 = true; break;
+            case 'v': verbatim = false; break;
+            case 'V': verbatim = true; break;
             }
         }
 
@@ -107,6 +115,7 @@ namespace beast {
         s.modeac_enable |= other.modeac_enable;
         s.filter_0_4_5 |= other.filter_0_4_5;
         s.radarcape |= other.radarcape;
+        s.verbatim |= other.verbatim;
         return s;
     }
 
@@ -150,6 +159,7 @@ namespace beast {
         f.receive_status = !radarcape.off();
         f.receive_gps_timestamps = !radarcape.off() && !gps_timestamps.off();
         f.receive_position = position_enable;
+        f.receive_verbatim = verbatim;
 
         return f;
     }
@@ -187,6 +197,7 @@ namespace beast {
         add_setting(msg, rts_handshake);
         add_setting(msg, fec_disable);
         add_setting(msg, modeac_enable);
+        add_setting(msg, verbatim);
 
         return msg;
     }
@@ -204,6 +215,7 @@ namespace beast {
         s.modeac_enable = (bool)modeac_enable;
         s.radarcape = (bool)radarcape;
         s.filter_0_4_5 = (bool)filter_0_4_5;
+        s.verbatim = (bool)verbatim;
         return s;
     }
 
@@ -213,6 +225,7 @@ namespace beast {
                 << s.filter_11_17_18 << s.avrmlat
                 << s.crc_disable << s.gps_timestamps
                 << s.rts_handshake << s.fec_disable
-                << s.modeac_enable << s.filter_0_4_5);
+                << s.modeac_enable << s.filter_0_4_5
+                << s.verbatim);
     }
 };

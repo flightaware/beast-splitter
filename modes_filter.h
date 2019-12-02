@@ -42,6 +42,7 @@ namespace modes {
         bool receive_status;
         bool receive_gps_timestamps;
         bool receive_position;
+        bool receive_verbatim;
 
         Filter();
 
@@ -61,7 +62,7 @@ namespace modes {
             case MessageType::MODE_S_LONG:
                 if (!receive_df[message.df()])
                     return false;
-                if (message.crc_bad() && !receive_bad_crc)
+                if (message.crc_bad() && !receive_bad_crc && !receive_verbatim)
                     return false;
                 return true;
             case MessageType::POSITION:

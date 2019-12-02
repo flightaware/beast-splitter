@@ -159,6 +159,7 @@ namespace beast {
         tristate<false, 'j', 'J'> modeac_enable;    // off=no Mode A/C, on=send Mode A/C
         tristate<false, 'k', 'K'> filter_0_4_5;     // off=no filter, on=don't send DF0/4/5 (Beast only)
         tristate<false, 'p', 'P'> position_enable;  // off=don't send position messages, on=send position message (Radarcape only, not a real setting)
+        tristate<false, 'v', 'V'> verbatim;         // off=send correctable messages with FEC applied, on=send correctable messages without FEC applied
     };
 
     template <bool D,char OFF,char ON>

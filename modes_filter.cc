@@ -34,7 +34,8 @@ namespace modes {
           receive_fec(false),
           receive_status(false),
           receive_gps_timestamps(false),
-          receive_position(false)
+          receive_position(false),
+          receive_verbatim(false)
     {
         receive_df.fill(false);
     }
@@ -49,6 +50,7 @@ namespace modes {
         receive_status = receive_status || two.receive_status;
         receive_gps_timestamps = receive_gps_timestamps || two.receive_gps_timestamps;
         receive_position = receive_position || two.receive_position;
+        receive_verbatim = receive_verbatim || two.receive_verbatim;
     }
 
     Filter Filter::combine(const Filter &one, const Filter &two)
@@ -69,6 +71,7 @@ namespace modes {
                 receive_status == other.receive_status &&
                 receive_gps_timestamps == other.receive_gps_timestamps &&
                 receive_position == other.receive_position &&
+                receive_verbatim == other.receive_verbatim &&
                 receive_df == other.receive_df);
     }
 
@@ -92,6 +95,8 @@ namespace modes {
             os << "gps ";
         if (f.receive_position)
             os << "position ";
+        if (f.receive_verbatim)
+            os << "verbatim ";
         for (std::size_t i = 0; i < f.receive_df.size(); ++i)
             if (f.receive_df[i])
                 os << i << " ";
