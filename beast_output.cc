@@ -146,6 +146,10 @@ namespace beast {
         case 'J':
             settings.modeac_enable = (ch == 'J');
             break;
+        case 'v':
+        case 'V':
+            settings.verbatim = (ch == 'V');
+            break;
         default:
             // unrecognized
             return;
