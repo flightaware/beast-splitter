@@ -121,10 +121,15 @@ void BeastInput::send_settings_message()
     // subclass-specific settings
     apply_connection_settings(settings);
 
+    // did anything actually change?
+    if (settings == current_settings)
+        return;
+
     // send it
     auto message = std::make_shared<helpers::bytebuf>(settings.to_message());
     if (low_level_write(message)) {
         std::cerr << what() << ": configured with settings: " << settings << std::endl;
+        current_settings = settings;
     }
 }
 

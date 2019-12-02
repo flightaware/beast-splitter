@@ -119,6 +119,10 @@ namespace beast {
                 return *this;
             }
 
+            bool operator==(const tristate<D,OFF,ON> &other) const {
+                return (state == other.state);
+            }
+
         private:
             int state;
         };
@@ -151,6 +155,8 @@ namespace beast {
         Settings apply_defaults() const;
 
         Settings operator|(const Settings &other) const;
+
+        bool operator==(const Settings &other) const;
 
         tristate<false, 'B', 'R'> radarcape;        // (B)east vs (R)adarcape
         tristate<true,  'c', 'C'> binary_format;    // off=AVR, on=binary

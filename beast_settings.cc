@@ -219,6 +219,23 @@ namespace beast {
         return s;
     }
 
+    bool Settings::operator==(const Settings &other) const
+    {
+        return
+            radarcape == other.radarcape &&
+            binary_format == other.binary_format &&
+            filter_11_17_18 == other.filter_11_17_18 &&
+            avrmlat == other.avrmlat &&
+            crc_disable == other.crc_disable &&
+            gps_timestamps == other.gps_timestamps &&
+            rts_handshake == other.rts_handshake &&
+            fec_disable == other.fec_disable &&
+            modeac_enable == other.modeac_enable &&
+            filter_0_4_5 == other.filter_0_4_5 &&
+            position_enable == other.position_enable &&
+            verbatim == other.verbatim;
+    }
+
     std::ostream &operator<<(std::ostream &os, const Settings &s)
     {
         return (os << s.radarcape << s.binary_format

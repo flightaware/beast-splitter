@@ -132,6 +132,9 @@ namespace beast {
         // settings that are always set, regardless of the filter state
         Settings fixed_settings;
 
+        // the current settings we configured on the source
+        Settings current_settings;
+
         // the current input filter
         modes::Filter filter;
 
