@@ -62,8 +62,10 @@ namespace modes {
             case MessageType::MODE_S_LONG:
                 if (!receive_df[message.df()])
                     return false;
-                if (message.crc_bad() && !receive_bad_crc && !receive_verbatim)
-                    return false;
+                if (!receive_bad_crc && !receive_verbatim && message.crc_bad()) {
+                    if (!receive_fec || !message.crc_correctable())
+                        return false;
+                }
                 return true;
             case MessageType::POSITION:
                 return receive_position;

@@ -35,6 +35,8 @@
 #include <functional>
 #include <map>
 
+#include "crc.h"
+
 namespace modes {
     // the type of one message
     enum class MessageType {
@@ -73,17 +75,6 @@ namespace modes {
         }
     }
 
-    extern std::uint32_t crc_table[256];
-
-    template <class InputIterator>
-    std::uint32_t crc(InputIterator first, InputIterator last) {
-        std::uint32_t c = 0;
-        for (InputIterator i = first; i != last; ++i) {
-            c = (c << 8) ^ crc_table[*i ^ ((c & 0xff0000) >> 16)];
-        }
-        return c & 0x00FFFFFF;
-    }
-
     // a single message
     class Message {
     public:
@@ -91,8 +82,7 @@ namespace modes {
             : m_type(MessageType::INVALID),
               m_timestamp_type(TimestampType::UNKNOWN),
               m_timestamp(0),
-              m_signal(0),
-              residual(0xFFFFFFFF)
+              m_signal(0)
         {}
 
         Message(MessageType type_,
@@ -102,8 +92,7 @@ namespace modes {
               m_timestamp_type(timestamp_type_),
               m_timestamp(timestamp_),
               m_signal(signal_),
-              m_data(std::move(data_)),
-              residual(0xFFFFFFFF)
+              m_data(std::move(data_))
         {
             assert (m_data.size() == message_size(m_type));
         }
@@ -116,7 +105,7 @@ namespace modes {
               m_timestamp(timestamp_),
               m_signal(signal_),
               m_data(data_),
-              residual(0xFFFFFFFF)
+              m_residual(0xFFFFFFFF)
         {
             assert (m_data.size() == message_size(m_type));
         }
@@ -163,20 +152,60 @@ namespace modes {
             }
         }
 
+        bool crc_correctable() const {
+            return (crc_correctable_bit() >= 0);
+        }
+
+        const std::vector<std::uint8_t> &corrected_data() const {
+            if (!crc_bad()) {
+                return m_data;
+            }
+
+            if (m_corrected_data.size() != 0) {
+                // already corrected
+                return m_corrected_data;
+            }
+
+            auto bit = crc_correctable_bit();
+            if (bit < 0) {
+                // not correctable
+                return m_corrected_data; // empty vector
+            }
+
+            // copy the original data and do FEC
+            m_corrected_data = m_data;
+            m_corrected_data[bit/8] ^= (1 << (7 - (bit & 7)));
+            return m_corrected_data;
+        }
+
     private:
         std::uint32_t crc_residual() const {
-            if (residual == 0xFFFFFFFF) {
-                std::size_t len = m_data.size();
-                if (len <= 3) {
-                    residual = 0;
-                } else {
-                    residual = crc(m_data.begin(), m_data.end() - 3);
-                    residual ^= (m_data[len-3] << 16);
-                    residual ^= (m_data[len-2] << 8);
-                    residual ^= (m_data[len-1]);
-                }
+            if (m_residual == 0xFFFFFFFF) {
+                m_residual = crc::message_residual(m_data);
             }
-            return residual;
+            return m_residual;
+        }
+
+        int crc_correctable_bit() const {
+            if (m_correctable_bit == -2) {
+                std::uint32_t residual;
+                switch (df()) {
+                case 11:
+                    // For DF11, don't mask off the lower 7 bits
+                    // i.e. try to correct under the assumption that IID=0
+                case 17:
+                case 18:
+                    residual = crc_residual();
+                default:
+                    return false;
+                }
+
+                m_correctable_bit = crc::correctable_bit(residual);
+                if (m_correctable_bit >= (int)m_data.size())
+                    m_correctable_bit = -1;
+            }
+
+            return m_correctable_bit;
         }
 
         MessageType m_type;
@@ -185,7 +214,9 @@ namespace modes {
         std::uint8_t m_signal;
         std::vector<std::uint8_t> m_data;
 
-        mutable std::uint32_t residual;
+        mutable std::uint32_t m_residual = 0xFFFFFFFF;
+        mutable int m_correctable_bit = -2;
+        mutable std::vector<std::uint8_t> m_corrected_data;
     };
 
     std::ostream& operator<<(std::ostream &os, const Message &message);

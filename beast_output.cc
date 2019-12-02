@@ -181,11 +181,13 @@ namespace beast {
                           message.signal(),
                           copy);
         } else {
+            // apply FEC if requested
+            bool needs_fec = (!settings.verbatim && !settings.fec_disable && message.crc_correctable());
             write_message(message.type(),
                           message.timestamp_type(),
                           message.timestamp(),
                           message.signal(),
-                          message.data());
+                          needs_fec ? message.corrected_data() : message.data());
         }
     }
 

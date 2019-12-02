@@ -1,4 +1,4 @@
-// Copyright (c) 2015-2016, FlightAware LLC.
+// Copyright (c) 2015-2019, FlightAware LLC.
 // Copyright (c) 2015, Oliver Jowett <oliver@mutability.co.uk>
 // All rights reserved.
 
@@ -23,21 +23,37 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include <iostream>
-#include <iomanip>
+#include "crc.h"
 
-#include "modes_message.h"
+#include <boost/preprocessor/repetition/enum.hpp>
 
-namespace modes {
-    std::ostream& operator<<(std::ostream &os, const Message &message) {
-        os << std::hex << std::setfill('0')
-           << message.type() << "@"
-           << std::setw(12) << message.timestamp()
-           << ":";
-        for (auto b : message.data()) {
-            os << std::setw(2) << (int)b;
+namespace crc::detail {
+    // generates the CRC table at compile time (!)
+    const std::uint32_t crc_polynomial = 0xfff409U;
+
+    template <std::uint32_t c, int k = 8>
+    struct crcgen : crcgen<((c & 0x00800000) ? crc_polynomial : 0) ^ (c << 1), k - 1> {};
+
+    template <std::uint32_t c>
+    struct crcgen<c, 0>
+    {
+        enum { value = (c & 0x00FFFFFF) };
+    };
+
+#define CRCGEN(Z, N, _) detail::crcgen<N << 16>::value
+    std::uint32_t crc_table[256] = { BOOST_PP_ENUM(256, CRCGEN, _) };
+#undef CRCGEN
+
+    std::map<std::uint32_t,unsigned> syndromes;
+
+    void init_syndromes() {
+        syndromes.clear();
+
+        std::vector<std::uint8_t> message(112 / 8);
+        for (unsigned i = 5; i < 112; ++i) {
+            message[i/8] ^= 1 << (7 - (i & 7));
+            syndromes[message_residual(message)] = i;
+            message[i/8] ^= 1 << (7 - (i & 7));
         }
-        os << std::dec << std::setfill(' ');
-        return os;
     }
-};
+}; // namespace crc::detail
