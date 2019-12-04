@@ -28,8 +28,8 @@
 #include <iostream>
 
 #include <boost/asio.hpp>
-#include <boost/asio/steady_timer.hpp>
 #include <boost/asio/ip/v6_only.hpp>
+#include <boost/asio/steady_timer.hpp>
 
 #include "beast_input_net.h"
 #include "modes_message.h"
@@ -37,49 +37,29 @@
 using namespace beast;
 using boost::asio::ip::tcp;
 
-NetInput::NetInput(boost::asio::io_service &service_,
-                   const std::string &host_,
-                   const std::string &port_or_service_,
-                   const Settings &fixed_settings_,
-                   const modes::Filter &filter_)
-    : BeastInput(service_, fixed_settings_, filter_),
-      host(host_),
-      port_or_service(port_or_service_),
-      resolver(service_),
-      socket(service_),
-      reconnect_timer(service_),
-      readbuf(std::make_shared<helpers::bytebuf>(read_buffer_size)),
-      warned_about_framing(false)
-{
-}
+NetInput::NetInput(boost::asio::io_service &service_, const std::string &host_, const std::string &port_or_service_, const Settings &fixed_settings_, const modes::Filter &filter_) : BeastInput(service_, fixed_settings_, filter_), host(host_), port_or_service(port_or_service_), resolver(service_), socket(service_), reconnect_timer(service_), readbuf(std::make_shared<helpers::bytebuf>(read_buffer_size)), warned_about_framing(false) {}
 
-std::string NetInput::what() const
-{
-    return std::string("net(") + host + std::string(":") + port_or_service + std::string(")");
-}
+std::string NetInput::what() const { return std::string("net(") + host + std::string(":") + port_or_service + std::string(")"); }
 
-void NetInput::try_to_connect(void)
-{
+void NetInput::try_to_connect(void) {
     auto self(shared_from_this());
 
     tcp::resolver::query query(host, port_or_service);
-    resolver.async_resolve(query, [this,self] (const boost::system::error_code &ec,
-                                               tcp::resolver::iterator it) {
-                               if (!ec) {
-                                   next_endpoint = it;
-                                   try_next_endpoint();
-                               } else if (ec == boost::asio::error::operation_aborted) {
-                                   return;
-                               } else {
-                                   std::cerr << what() << ": could not resolve address: " << ec.message() << std::endl;
-                                   connection_failed();
-                                   return;
-                               }
-                           });
+    resolver.async_resolve(query, [this, self](const boost::system::error_code &ec, tcp::resolver::iterator it) {
+        if (!ec) {
+            next_endpoint = it;
+            try_next_endpoint();
+        } else if (ec == boost::asio::error::operation_aborted) {
+            return;
+        } else {
+            std::cerr << what() << ": could not resolve address: " << ec.message() << std::endl;
+            connection_failed();
+            return;
+        }
+    });
 }
 
-void NetInput::try_next_endpoint()
-{
+void NetInput::try_next_endpoint() {
     if (next_endpoint == tcp::resolver::iterator()) {
         // No more addresses to try
         connection_failed();
@@ -89,22 +69,20 @@ void NetInput::try_next_endpoint()
     tcp::endpoint endpoint = *next_endpoint++;
 
     auto self(shared_from_this());
-    socket.async_connect(endpoint,
-                         [this,self,endpoint] (const boost::system::error_code &ec) {
-                             if (!ec) {
-                                 connection_established(endpoint);
-                             } else if (ec == boost::asio::error::operation_aborted) {
-                                 return;
-                             } else {
-                                 std::cerr << what() << ": connection to " << endpoint << " failed: " << ec.message() << std::endl;
-                                 socket.close();
-                                 try_next_endpoint();
-                             }
-                         });
+    socket.async_connect(endpoint, [this, self, endpoint](const boost::system::error_code &ec) {
+        if (!ec) {
+            connection_established(endpoint);
+        } else if (ec == boost::asio::error::operation_aborted) {
+            return;
+        } else {
+            std::cerr << what() << ": connection to " << endpoint << " failed: " << ec.message() << std::endl;
+            socket.close();
+            try_next_endpoint();
+        }
+    });
 }
 
-void NetInput::connection_established(const tcp::endpoint &endpoint)
-{
+void NetInput::connection_established(const tcp::endpoint &endpoint) {
     std::cerr << what() << ": connected to " << endpoint << std::endl;
 
     BeastInput::connection_established();
@@ -112,30 +90,26 @@ void NetInput::connection_established(const tcp::endpoint &endpoint)
     start_reading();
 }
 
-void NetInput::disconnect()
-{
+void NetInput::disconnect() {
     if (socket.is_open()) {
         boost::system::error_code ignored;
         socket.close(ignored);
     }
 }
 
-bool NetInput::low_level_write(std::shared_ptr<helpers::bytebuf> message)
-{
+bool NetInput::low_level_write(std::shared_ptr<helpers::bytebuf> message) {
     if (!socket.is_open())
         return false;
 
     auto self(shared_from_this());
-    boost::asio::async_write(socket, boost::asio::buffer(*message),
-                             [this,self,message] (boost::system::error_code ec, std::size_t len) {
-                                 if (ec)
-                                     handle_error(ec);
-                             });
+    boost::asio::async_write(socket, boost::asio::buffer(*message), [this, self, message](boost::system::error_code ec, std::size_t len) {
+        if (ec)
+            handle_error(ec);
+    });
     return true;
 }
 
-void NetInput::handle_error(const boost::system::error_code &ec)
-{
+void NetInput::handle_error(const boost::system::error_code &ec) {
     if (ec == boost::asio::error::operation_aborted)
         return;
 
@@ -148,8 +122,7 @@ void NetInput::handle_error(const boost::system::error_code &ec)
     }
 }
 
-void NetInput::check_framing_errors(void)
-{
+void NetInput::check_framing_errors(void) {
     if (!have_good_sync() && bad_bytes() > 20) {
         if (!warned_about_framing) {
             std::cerr << what() << ": framing errors seen, is the peer sending Beast binary data?" << std::endl;
@@ -158,10 +131,9 @@ void NetInput::check_framing_errors(void)
     }
 }
 
-void NetInput::start_reading(const boost::system::error_code &ec)
-{
+void NetInput::start_reading(const boost::system::error_code &ec) {
     if (ec) {
-        assert (ec == boost::asio::error::operation_aborted);
+        assert(ec == boost::asio::error::operation_aborted);
         return;
     }
 
@@ -175,18 +147,17 @@ void NetInput::start_reading(const boost::system::error_code &ec)
         buf = std::make_shared<helpers::bytebuf>(read_buffer_size);
     }
 
-    socket.async_read_some(boost::asio::buffer(*buf),
-                           [this,self,buf] (const boost::system::error_code &ec, std::size_t len) {
-                               if (ec) {
-                                   readbuf = buf;
-                                   handle_error(ec);
-                               } else {
-                                   buf->resize(len);
-                                   parse_input(*buf);
-                                   check_framing_errors();
-                                   readbuf = buf;
+    socket.async_read_some(boost::asio::buffer(*buf), [this, self, buf](const boost::system::error_code &ec, std::size_t len) {
+        if (ec) {
+            readbuf = buf;
+            handle_error(ec);
+        } else {
+            buf->resize(len);
+            parse_input(*buf);
+            check_framing_errors();
+            readbuf = buf;
 
-                                   start_reading();
-                               }
-                           });
+            start_reading();
+        }
+    });
 }

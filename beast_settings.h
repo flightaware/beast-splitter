@@ -41,9 +41,8 @@ namespace beast {
     struct Settings {
         // a setting that can be explicitly ON, explicitly OFF, or default DONTCARE
         // DONTCARE means either on or off based on the D template parameter
-        template <bool D, char OFF, char ON>
-        class tristate {
-        public:
+        template <bool D, char OFF, char ON> class tristate {
+          public:
             tristate() : state(0) {}
             tristate(bool b) : state(b ? 1 : -1) {}
 
@@ -52,29 +51,17 @@ namespace beast {
                 return *this;
             }
 
-            operator bool() const {
-                return (dontcare() ? D : on());
-            }
+            operator bool() const { return (dontcare() ? D : on()); }
 
-            bool operator!() const {
-                return !(dontcare() ? D : on());
-            }
+            bool operator!() const { return !(dontcare() ? D : on()); }
 
-            bool on() const {
-                return (state > 0);
-            }
+            bool on() const { return (state > 0); }
 
-            bool off() const {
-                return (state < 0);
-            }
+            bool off() const { return (state < 0); }
 
-            bool dontcare() const {
-                return (state == 0);
-            }
+            bool dontcare() const { return (state == 0); }
 
-            void clear() {
-                state = 0;
-            }
+            void clear() { state = 0; }
 
             // operator+ combines two settings with equal weight
             // given to both.
@@ -83,7 +70,7 @@ namespace beast {
             // ON + ON  == ON
             // ON + OFF == OFF + ON == DONTCARE
             // OFF + OFF == OFF
-            tristate<D,OFF,ON> operator+(const tristate<D,OFF,ON> &other) const {
+            tristate<D, OFF, ON> operator+(const tristate<D, OFF, ON> &other) const {
                 if (state == 0)
                     return other;
                 else if (other.state == 0)
@@ -91,10 +78,10 @@ namespace beast {
                 else if (state == other.state)
                     return *this;
                 else
-                    return tristate<D,OFF,ON>(); // DONTCARE
+                    return tristate<D, OFF, ON>(); // DONTCARE
             }
 
-            tristate<D,OFF,ON> &operator+=(const tristate<D,OFF,ON> &other) {
+            tristate<D, OFF, ON> &operator+=(const tristate<D, OFF, ON> &other) {
                 if (state == 0)
                     state = other.state;
                 else if (other.state != 0 && state != other.state)
@@ -106,24 +93,22 @@ namespace beast {
             // DONTCARE | X == X
             // ON | X == ON
             // OFF | X == OFF
-            tristate<D,OFF,ON> operator|(const tristate<D,OFF,ON> &other) const {
+            tristate<D, OFF, ON> operator|(const tristate<D, OFF, ON> &other) const {
                 if (state == 0)
                     return other;
                 else
                     return *this;
             }
 
-            tristate<D,OFF,ON> &operator|=(const tristate<D,OFF,ON> &other) {
+            tristate<D, OFF, ON> &operator|=(const tristate<D, OFF, ON> &other) {
                 if (state == 0)
                     state = other.state;
                 return *this;
             }
 
-            bool operator==(const tristate<D,OFF,ON> &other) const {
-                return (state == other.state);
-            }
+            bool operator==(const tristate<D, OFF, ON> &other) const { return (state == other.state); }
 
-        private:
+          private:
             int state;
         };
 
@@ -158,22 +143,21 @@ namespace beast {
 
         bool operator==(const Settings &other) const;
 
-        tristate<false, 'B', 'R'> radarcape;        // (B)east vs (R)adarcape
-        tristate<true,  'c', 'C'> binary_format;    // off=AVR, on=binary
-        tristate<false, 'd', 'D'> filter_11_17_18;  // off=no filter, on=send only DF11/17/18
-        tristate<true,  'e', 'E'> avrmlat;          // off=no timestamps in AVR, on=include timestamps in AVR
-        tristate<false, 'f', 'F'> crc_disable;      // off=normal CRC checks, on=no CRC checks
-        tristate<true,  'g', 'G'> gps_timestamps;   // off=12MHz timestamps, on=GPS timestamps (Radarcape only)
-        tristate<true,  'h', 'H'> rts_handshake;    // off=no flow control, on=RTS/CTS flow control
-        tristate<false, 'i', 'I'> fec_disable;      // off=1-bit FEC enabled, on=no FEC
-        tristate<false, 'j', 'J'> modeac_enable;    // off=no Mode A/C, on=send Mode A/C
-        tristate<false, 'k', 'K'> filter_0_4_5;     // off=no filter, on=don't send DF0/4/5 (Beast only)
-        tristate<false, 'p', 'P'> position_enable;  // off=don't send position messages, on=send position message (Radarcape only, not a real setting)
-        tristate<false, 'v', 'V'> verbatim;         // off=send correctable messages with FEC applied, on=send correctable messages without FEC applied
+        tristate<false, 'B', 'R'> radarcape;       // (B)east vs (R)adarcape
+        tristate<true, 'c', 'C'> binary_format;    // off=AVR, on=binary
+        tristate<false, 'd', 'D'> filter_11_17_18; // off=no filter, on=send only DF11/17/18
+        tristate<true, 'e', 'E'> avrmlat;          // off=no timestamps in AVR, on=include timestamps in AVR
+        tristate<false, 'f', 'F'> crc_disable;     // off=normal CRC checks, on=no CRC checks
+        tristate<true, 'g', 'G'> gps_timestamps;   // off=12MHz timestamps, on=GPS timestamps (Radarcape only)
+        tristate<true, 'h', 'H'> rts_handshake;    // off=no flow control, on=RTS/CTS flow control
+        tristate<false, 'i', 'I'> fec_disable;     // off=1-bit FEC enabled, on=no FEC
+        tristate<false, 'j', 'J'> modeac_enable;   // off=no Mode A/C, on=send Mode A/C
+        tristate<false, 'k', 'K'> filter_0_4_5;    // off=no filter, on=don't send DF0/4/5 (Beast only)
+        tristate<false, 'p', 'P'> position_enable; // off=don't send position messages, on=send position message (Radarcape only, not a real setting)
+        tristate<false, 'v', 'V'> verbatim;        // off=send correctable messages with FEC applied, on=send correctable messages without FEC applied
     };
 
-    template <bool D,char OFF,char ON>
-    std::ostream &operator<<(std::ostream &os, const Settings::tristate<D,OFF,ON> &s) {
+    template <bool D, char OFF, char ON> std::ostream &operator<<(std::ostream &os, const Settings::tristate<D, OFF, ON> &s) {
         if (s.on())
             return (os << ON);
         else if (s.off())
@@ -183,6 +167,6 @@ namespace beast {
     }
 
     std::ostream &operator<<(std::ostream &os, const Settings &s);
-};
+}; // namespace beast
 
 #endif

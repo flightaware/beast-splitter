@@ -34,38 +34,24 @@
 
 namespace beast {
     class NetInput : public BeastInput {
-    public:
+      public:
         typedef std::shared_ptr<NetInput> pointer;
 
         // the number of bytes to try to read at a time from the connection
         const size_t read_buffer_size = 4096;
 
         // factory method
-        static pointer create(boost::asio::io_service &service,
-                              const std::string &host,
-                              const std::string &port_or_service,
-                              const Settings &fixed_settings = Settings(),
-                              const modes::Filter &filter = modes::Filter())
-        {
-            return pointer(new NetInput(service,
-                                        host, port_or_service,
-                                        fixed_settings,
-                                        filter));
-        }
+        static pointer create(boost::asio::io_service &service, const std::string &host, const std::string &port_or_service, const Settings &fixed_settings = Settings(), const modes::Filter &filter = modes::Filter()) { return pointer(new NetInput(service, host, port_or_service, fixed_settings, filter)); }
 
-    protected:
+      protected:
         std::string what() const override;
         void try_to_connect(void) override;
         void disconnect(void) override;
         bool low_level_write(std::shared_ptr<helpers::bytebuf> message) override;
 
-    private:
+      private:
         // construct a new net input instance, don't start yet
-        NetInput(boost::asio::io_service &service_,
-                 const std::string &host_,
-                 const std::string &port_or_service_,
-                 const Settings &fixed_settings_,
-                 const modes::Filter &filter_);
+        NetInput(boost::asio::io_service &service_, const std::string &host_, const std::string &port_or_service_, const Settings &fixed_settings_, const modes::Filter &filter_);
 
         void resolve_and_connect(const boost::system::error_code &ec = boost::system::error_code());
         void try_next_endpoint();
@@ -88,6 +74,6 @@ namespace beast {
         // have we warned about a possibly bad protocol?
         bool warned_about_framing;
     };
-};
+}; // namespace beast
 
 #endif

@@ -27,8 +27,8 @@
 #include <iostream>
 
 #include <boost/asio.hpp>
-#include <boost/asio/steady_timer.hpp>
 #include <boost/asio/ip/v6_only.hpp>
+#include <boost/asio/steady_timer.hpp>
 
 #include "beast_output.h"
 #include "modes_message.h"
@@ -39,42 +39,26 @@ using boost::asio::ip::tcp;
 namespace beast {
     enum class SocketOutput::ParserState { FIND_1A, READ_1, READ_OPTION };
 
-    SocketOutput::SocketOutput(asio::io_service &service_,
-                               tcp::socket &&socket_,
-                               const Settings &settings_)
-        : service(service_),
-          socket(std::move(socket_)),
-          peer(socket.remote_endpoint()),
-          state(ParserState::FIND_1A),
-          settings(settings_),
-          flush_pending(false)
-    {
-    }
+    SocketOutput::SocketOutput(asio::io_service &service_, tcp::socket &&socket_, const Settings &settings_) : service(service_), socket(std::move(socket_)), peer(socket.remote_endpoint()), state(ParserState::FIND_1A), settings(settings_), flush_pending(false) {}
 
-    void SocketOutput::start()
-    {
-        read_commands();
-    }
+    void SocketOutput::start() { read_commands(); }
 
-    void SocketOutput::read_commands()
-    {
+    void SocketOutput::read_commands() {
         auto self(shared_from_this());
-        auto buf = std::make_shared< std::vector<std::uint8_t> >(512);
+        auto buf = std::make_shared<std::vector<std::uint8_t>>(512);
 
-        socket.async_read_some(asio::buffer(*buf),
-                               [this,self,buf] (const boost::system::error_code &ec, std::size_t len) {
-                                   if (ec) {
-                                       handle_error(ec);
-                                   } else {
-                                       buf->resize(len);
-                                       process_commands(*buf);
-                                       read_commands();
-                                   }
-                               });
+        socket.async_read_some(asio::buffer(*buf), [this, self, buf](const boost::system::error_code &ec, std::size_t len) {
+            if (ec) {
+                handle_error(ec);
+            } else {
+                buf->resize(len);
+                process_commands(*buf);
+                read_commands();
+            }
+        });
     }
 
-    void SocketOutput::process_commands(std::vector<std::uint8_t> data)
-    {
+    void SocketOutput::process_commands(std::vector<std::uint8_t> data) {
         bool got_a_command = false;
 
         for (auto p = data.begin(); p != data.end(); ++p) {
@@ -107,9 +91,8 @@ namespace beast {
         }
     }
 
-    void SocketOutput::process_option_command(uint8_t option)
-    {
-        char ch = (char) option;
+    void SocketOutput::process_option_command(uint8_t option) {
+        char ch = (char)option;
         switch (ch) {
         case 'c':
         case 'C':
@@ -156,8 +139,7 @@ namespace beast {
         }
     }
 
-    void SocketOutput::write(const modes::Message &message)
-    {
+    void SocketOutput::write(const modes::Message &message) {
         if (!socket.is_open())
             return; // we are shut down
 
@@ -175,28 +157,15 @@ namespace beast {
                 copy[2] |= 0x20; // set emulated-timestamp flag
             }
 
-            write_message(message.type(),
-                          message.timestamp_type(),
-                          message.timestamp(),
-                          message.signal(),
-                          copy);
+            write_message(message.type(), message.timestamp_type(), message.timestamp(), message.signal(), copy);
         } else {
             // apply FEC if requested
             bool needs_fec = (!settings.verbatim && !settings.fec_disable && message.crc_correctable());
-            write_message(message.type(),
-                          message.timestamp_type(),
-                          message.timestamp(),
-                          message.signal(),
-                          needs_fec ? message.corrected_data() : message.data());
+            write_message(message.type(), message.timestamp_type(), message.timestamp(), message.signal(), needs_fec ? message.corrected_data() : message.data());
         }
     }
 
-    void SocketOutput::write_message(modes::MessageType type,
-                                     modes::TimestampType timestamp_type,
-                                     std::uint64_t timestamp,
-                                     std::uint8_t signal,
-                                     const helpers::bytebuf &data)
-    {
+    void SocketOutput::write_message(modes::MessageType type, modes::TimestampType timestamp_type, std::uint64_t timestamp, std::uint8_t signal, const helpers::bytebuf &data) {
         if (timestamp_type == modes::TimestampType::TWELVEMEG && !settings.radarcape.off() && settings.gps_timestamps.on()) {
             // GPS timestamps were explicitly requested
             // scale 12MHz to pseudo-GPS
@@ -226,24 +195,21 @@ namespace beast {
         }
     }
 
-    void SocketOutput::prepare_write()
-    {
+    void SocketOutput::prepare_write() {
         if (!outbuf) {
             outbuf = std::make_shared<helpers::bytebuf>();
             outbuf->reserve(read_buffer_size);
         }
     }
 
-    void SocketOutput::complete_write()
-    {
+    void SocketOutput::complete_write() {
         if (!flush_pending && !outbuf->empty()) {
             flush_pending = true;
             service.post(std::bind(&SocketOutput::flush_outbuf, shared_from_this()));
         }
     }
 
-    void SocketOutput::flush_outbuf()
-    {
+    void SocketOutput::flush_outbuf() {
         if (!outbuf || outbuf->empty())
             return;
 
@@ -251,37 +217,31 @@ namespace beast {
         writebuf.swap(outbuf);
 
         auto self(shared_from_this());
-        async_write(socket, boost::asio::buffer(*writebuf),
-                    [this,self,writebuf] (const boost::system::error_code &ec, size_t len) {
-                        // NB: we only reset the pending flag here,
-                        // because async_write is a composed operation
-                        // that might take a while to complete, and
-                        // if we do another write before it completes
-                        // then it might interleave data.
-                        flush_pending = false;
+        async_write(socket, boost::asio::buffer(*writebuf), [this, self, writebuf](const boost::system::error_code &ec, size_t len) {
+            // NB: we only reset the pending flag here,
+            // because async_write is a composed operation
+            // that might take a while to complete, and
+            // if we do another write before it completes
+            // then it might interleave data.
+            flush_pending = false;
 
-                        if (!outbuf) {
-                            writebuf->clear();
-                            outbuf = writebuf;
-                        }
+            if (!outbuf) {
+                writebuf->clear();
+                outbuf = writebuf;
+            }
 
-                        if (ec)
-                            handle_error(ec);
-                    });
+            if (ec)
+                handle_error(ec);
+        });
     }
 
-    static inline void push_back_beast(helpers::bytebuf &v, std::uint8_t b)
-    {
+    static inline void push_back_beast(helpers::bytebuf &v, std::uint8_t b) {
         if (b == 0x1A)
             v.push_back(0x1A);
         v.push_back(b);
     }
 
-    void SocketOutput::write_binary(modes::MessageType type,
-                                    std::uint64_t timestamp,
-                                    std::uint8_t signal,
-                                    const helpers::bytebuf &data)
-    {
+    void SocketOutput::write_binary(modes::MessageType type, std::uint64_t timestamp, std::uint8_t signal, const helpers::bytebuf &data) {
         prepare_write();
         outbuf->push_back(0x1A);
         outbuf->push_back(messagetype_to_byte(type));
@@ -304,31 +264,28 @@ namespace beast {
 
     // we could use ostrstream here, I guess, but this is simpler
 
-    static inline void push_back_hex(helpers::bytebuf &v, std::uint8_t b)
-    {
+    static inline void push_back_hex(helpers::bytebuf &v, std::uint8_t b) {
         static const char *hexdigits = "0123456789ABCDEF";
-        v.push_back((std::uint8_t) hexdigits[(b >> 4) & 0x0F]);
-        v.push_back((std::uint8_t) hexdigits[b & 0x0F]);
+        v.push_back((std::uint8_t)hexdigits[(b >> 4) & 0x0F]);
+        v.push_back((std::uint8_t)hexdigits[b & 0x0F]);
     }
 
-    void SocketOutput::write_avr(const helpers::bytebuf &data)
-    {
+    void SocketOutput::write_avr(const helpers::bytebuf &data) {
         prepare_write();
 
-        outbuf->push_back((std::uint8_t) '*');
+        outbuf->push_back((std::uint8_t)'*');
         for (auto b : data)
             push_back_hex(*outbuf, b);
-        outbuf->push_back((std::uint8_t) ';');
-        outbuf->push_back((std::uint8_t) '\n');
+        outbuf->push_back((std::uint8_t)';');
+        outbuf->push_back((std::uint8_t)'\n');
 
         complete_write();
     }
 
-    void SocketOutput::write_avrmlat(std::uint64_t timestamp, const helpers::bytebuf &data)
-    {
+    void SocketOutput::write_avrmlat(std::uint64_t timestamp, const helpers::bytebuf &data) {
         prepare_write();
 
-        outbuf->push_back((std::uint8_t) '@');
+        outbuf->push_back((std::uint8_t)'@');
         push_back_hex(*outbuf, (timestamp >> 40) & 0xFF);
         push_back_hex(*outbuf, (timestamp >> 32) & 0xFF);
         push_back_hex(*outbuf, (timestamp >> 24) & 0xFF);
@@ -337,14 +294,13 @@ namespace beast {
         push_back_hex(*outbuf, timestamp & 0xFF);
         for (auto b : data)
             push_back_hex(*outbuf, b);
-        outbuf->push_back((std::uint8_t) ';');
-        outbuf->push_back((std::uint8_t) '\n');
+        outbuf->push_back((std::uint8_t)';');
+        outbuf->push_back((std::uint8_t)'\n');
 
         complete_write();
     }
 
-    void SocketOutput::handle_error(const boost::system::error_code &ec)
-    {
+    void SocketOutput::handle_error(const boost::system::error_code &ec) {
         if (ec == boost::asio::error::eof) {
             std::cerr << peer << ": connection closed" << std::endl;
         } else if (ec != boost::asio::error::operation_aborted) {
@@ -354,8 +310,7 @@ namespace beast {
         close();
     }
 
-    void SocketOutput::close()
-    {
+    void SocketOutput::close() {
         socket.close();
         if (close_notifier)
             close_notifier();
@@ -363,21 +318,9 @@ namespace beast {
 
     //////////////
 
-    SocketListener::SocketListener(asio::io_service &service_,
-                                   const tcp::endpoint &endpoint_,
-                                   modes::FilterDistributor &distributor_,
-                                   const Settings &initial_settings_)
-        : service(service_),
-          acceptor(service_),
-          endpoint(endpoint_),
-          socket(service_),
-          distributor(distributor_),
-          initial_settings(initial_settings_)
-    {
-    }
+    SocketListener::SocketListener(asio::io_service &service_, const tcp::endpoint &endpoint_, modes::FilterDistributor &distributor_, const Settings &initial_settings_) : service(service_), acceptor(service_), endpoint(endpoint_), socket(service_), distributor(distributor_), initial_settings(initial_settings_) {}
 
-    void SocketListener::start()
-    {
+    void SocketListener::start() {
         acceptor.open(endpoint.protocol());
         acceptor.set_option(asio::socket_base::reuse_address(true));
         acceptor.set_option(tcp::acceptor::reuse_address(true));
@@ -391,109 +334,80 @@ namespace beast {
         accept_connection();
     }
 
-    void SocketListener::close()
-    {
+    void SocketListener::close() {
         acceptor.cancel();
         socket.close();
     }
 
-    void SocketListener::accept_connection()
-    {
+    void SocketListener::accept_connection() {
         auto self(shared_from_this());
 
-        acceptor.async_accept(socket,
-                              peer,
-                              [this,self] (const boost::system::error_code &ec) {
-                                  if (!ec) {
-                                      std::cerr << endpoint << ": accepted a connection from " << peer << " with settings " << initial_settings << std::endl;
-                                      SocketOutput::pointer new_output = SocketOutput::create(service, std::move(socket), initial_settings);
+        acceptor.async_accept(socket, peer, [this, self](const boost::system::error_code &ec) {
+            if (!ec) {
+                std::cerr << endpoint << ": accepted a connection from " << peer << " with settings " << initial_settings << std::endl;
+                SocketOutput::pointer new_output = SocketOutput::create(service, std::move(socket), initial_settings);
 
-                                      modes::FilterDistributor::handle h = distributor.add_client(std::bind(&SocketOutput::write, new_output, std::placeholders::_1),
-                                                                                                  initial_settings.to_filter());
+                modes::FilterDistributor::handle h = distributor.add_client(std::bind(&SocketOutput::write, new_output, std::placeholders::_1), initial_settings.to_filter());
 
-                                      new_output->set_settings_notifier([this,self,h] (const Settings &newsettings) {
-                                              distributor.update_client_filter(h, newsettings.to_filter());
-                                          });
+                new_output->set_settings_notifier([this, self, h](const Settings &newsettings) { distributor.update_client_filter(h, newsettings.to_filter()); });
 
-                                      new_output->set_close_notifier([this,self,h] {
-                                              distributor.remove_client(h);
-                                          });
+                new_output->set_close_notifier([this, self, h] { distributor.remove_client(h); });
 
-                                      new_output->start();
-                                  } else {
-                                      if (ec == boost::system::errc::operation_canceled)
-                                          return;
-                                      std::cerr << endpoint << ": accept error: " << ec.message() << std::endl;
-                                  }
+                new_output->start();
+            } else {
+                if (ec == boost::system::errc::operation_canceled)
+                    return;
+                std::cerr << endpoint << ": accept error: " << ec.message() << std::endl;
+            }
 
-                                  accept_connection();
-                              });
+            accept_connection();
+        });
     }
 
     //////////////
 
-    SocketConnector::SocketConnector(asio::io_service &service_,
-                                     const std::string &host_,
-                                     const std::string &port_or_service_,
-                                     modes::FilterDistributor &distributor_,
-                                     const Settings &initial_settings_)
-        : service(service_),
-          resolver(service_),
-          socket(service_),
-          reconnect_timer(service_),
-          host(host_),
-          port_or_service(port_or_service_),
-          distributor(distributor_),
-          initial_settings(initial_settings_),
-          running(false)
-    {
-    }
+    SocketConnector::SocketConnector(asio::io_service &service_, const std::string &host_, const std::string &port_or_service_, modes::FilterDistributor &distributor_, const Settings &initial_settings_) : service(service_), resolver(service_), socket(service_), reconnect_timer(service_), host(host_), port_or_service(port_or_service_), distributor(distributor_), initial_settings(initial_settings_), running(false) {}
 
-    void SocketConnector::start()
-    {
+    void SocketConnector::start() {
         running = true;
         resolve_and_connect();
     }
 
-    void SocketConnector::close()
-    {
+    void SocketConnector::close() {
         running = false;
         resolver.cancel();
         reconnect_timer.cancel();
         socket.close();
     }
 
-    void SocketConnector::resolve_and_connect(const boost::system::error_code &ec)
-    {
+    void SocketConnector::resolve_and_connect(const boost::system::error_code &ec) {
         if (!running) {
             return;
         }
 
         if (ec) {
-            assert (ec == boost::asio::error::operation_aborted);
+            assert(ec == boost::asio::error::operation_aborted);
             return;
         }
 
         auto self(shared_from_this());
 
         tcp::resolver::query query(host, port_or_service);
-        resolver.async_resolve(query, [this,self] (const boost::system::error_code &ec,
-                                                   tcp::resolver::iterator it) {
-                                   if (!ec) {
-                                       next_endpoint = it;
-                                       try_next_endpoint();
-                                   } else if (ec == boost::asio::error::operation_aborted) {
-                                       return;
-                                   } else {
-                                       std::cerr << host << ":" << port_or_service << ": could not resolve address: " << ec.message() << std::endl;
-                                       schedule_reconnect();
-                                       return;
-                                   }
-                               });
+        resolver.async_resolve(query, [this, self](const boost::system::error_code &ec, tcp::resolver::iterator it) {
+            if (!ec) {
+                next_endpoint = it;
+                try_next_endpoint();
+            } else if (ec == boost::asio::error::operation_aborted) {
+                return;
+            } else {
+                std::cerr << host << ":" << port_or_service << ": could not resolve address: " << ec.message() << std::endl;
+                schedule_reconnect();
+                return;
+            }
+        });
     }
 
-    void SocketConnector::try_next_endpoint()
-    {
+    void SocketConnector::try_next_endpoint() {
         if (!running) {
             return;
         }
@@ -507,26 +421,22 @@ namespace beast {
         tcp::endpoint endpoint = *next_endpoint++;
 
         auto self(shared_from_this());
-        socket.async_connect(endpoint,
-                             [this,self,endpoint] (const boost::system::error_code &ec) {
-                                 if (!ec) {
-                                     connection_established(endpoint);
-                                 } else if (ec == boost::asio::error::operation_aborted) {
-                                     return;
-                                 } else {
-                                     std::cerr << host << ":" << port_or_service << ": connection to " << endpoint << " failed: " << ec.message() << std::endl;
-                                     socket.close();
-                                     try_next_endpoint();
-                                 }
-                             });
+        socket.async_connect(endpoint, [this, self, endpoint](const boost::system::error_code &ec) {
+            if (!ec) {
+                connection_established(endpoint);
+            } else if (ec == boost::asio::error::operation_aborted) {
+                return;
+            } else {
+                std::cerr << host << ":" << port_or_service << ": connection to " << endpoint << " failed: " << ec.message() << std::endl;
+                socket.close();
+                try_next_endpoint();
+            }
+        });
     }
 
-    void SocketConnector::schedule_reconnect()
-    {
+    void SocketConnector::schedule_reconnect() {
         if (running) {
-            std::cerr << host << ":" << port_or_service << ": reconnecting in "
-                      << std::chrono::duration_cast<std::chrono::seconds>(reconnect_interval).count() << " seconds"
-                      << std::endl;
+            std::cerr << host << ":" << port_or_service << ": reconnecting in " << std::chrono::duration_cast<std::chrono::seconds>(reconnect_interval).count() << " seconds" << std::endl;
 
             auto self(shared_from_this());
             reconnect_timer.expires_from_now(reconnect_interval);
@@ -534,25 +444,21 @@ namespace beast {
         }
     }
 
-    void SocketConnector::connection_established(const tcp::endpoint &endpoint)
-    {
+    void SocketConnector::connection_established(const tcp::endpoint &endpoint) {
         auto self(shared_from_this());
 
         std::cerr << host << ":" << port_or_service << ": connected to " << endpoint << " with settings " << initial_settings << std::endl;
         SocketOutput::pointer new_output = SocketOutput::create(service, std::move(socket), initial_settings);
 
-        modes::FilterDistributor::handle h = distributor.add_client(std::bind(&SocketOutput::write, new_output, std::placeholders::_1),
-                                                                    initial_settings.to_filter());
+        modes::FilterDistributor::handle h = distributor.add_client(std::bind(&SocketOutput::write, new_output, std::placeholders::_1), initial_settings.to_filter());
 
-        new_output->set_settings_notifier([this,self,h] (const Settings &newsettings) {
-                distributor.update_client_filter(h, newsettings.to_filter());
-            });
+        new_output->set_settings_notifier([this, self, h](const Settings &newsettings) { distributor.update_client_filter(h, newsettings.to_filter()); });
 
-        new_output->set_close_notifier([this,self,h] {
-                distributor.remove_client(h);
-                schedule_reconnect();
-            });
+        new_output->set_close_notifier([this, self, h] {
+            distributor.remove_client(h);
+            schedule_reconnect();
+        });
 
         new_output->start();
     }
-};
+}; // namespace beast

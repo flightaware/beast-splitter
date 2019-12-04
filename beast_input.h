@@ -28,37 +28,42 @@
 #ifndef BEAST_INPUT_H
 #define BEAST_INPUT_H
 
-#include <cstdint>
-#include <vector>
 #include <chrono>
+#include <cstdint>
 #include <memory>
+#include <vector>
 
 #include <boost/asio/io_service.hpp>
 #include <boost/asio/serial_port.hpp>
 #include <boost/asio/steady_timer.hpp>
 
-#include "helpers.h"
 #include "beast_settings.h"
-#include "modes_message.h"
+#include "helpers.h"
 #include "modes_filter.h"
+#include "modes_message.h"
 
 namespace beast {
-    inline modes::MessageType messagetype_from_byte(std::uint8_t b)
-    {
+    inline modes::MessageType messagetype_from_byte(std::uint8_t b) {
         switch (b) {
-        case 0x31: return modes::MessageType::MODE_AC;
-        case 0x32: return modes::MessageType::MODE_S_SHORT;
-        case 0x33: return modes::MessageType::MODE_S_LONG;
-        case 0x34: return modes::MessageType::STATUS;
-        case 0x35: return modes::MessageType::POSITION;
-        default: return modes::MessageType::INVALID;
+        case 0x31:
+            return modes::MessageType::MODE_AC;
+        case 0x32:
+            return modes::MessageType::MODE_S_SHORT;
+        case 0x33:
+            return modes::MessageType::MODE_S_LONG;
+        case 0x34:
+            return modes::MessageType::STATUS;
+        case 0x35:
+            return modes::MessageType::POSITION;
+        default:
+            return modes::MessageType::INVALID;
         }
     }
 
     enum class ReceiverType { UNKNOWN, BEAST, RADARCAPE };
 
     class BeastInput : public std::enable_shared_from_this<BeastInput> {
-    public:
+      public:
         typedef std::shared_ptr<BeastInput> pointer;
 
         // how long to wait before trying to reopen the connection after an error
@@ -78,27 +83,19 @@ namespace beast {
         void start(void);
         void close(void);
 
-        bool is_connected(void) const {
-            return (good_sync && receiver_type != ReceiverType::UNKNOWN);
-        }
+        bool is_connected(void) const { return (good_sync && receiver_type != ReceiverType::UNKNOWN); }
 
-        ReceiverType receiver(void) const {
-            return receiver_type;
-        }
+        ReceiverType receiver(void) const { return receiver_type; }
 
         // change the input filter to the given filter
         void set_filter(const modes::Filter &filter_);
 
         // change where received messages go to
-        void set_message_notifier(MessageNotifier notifier) {
-            message_notifier = notifier;
-        }
+        void set_message_notifier(MessageNotifier notifier) { message_notifier = notifier; }
 
-    protected:
+      protected:
         // construct a new input instance
-        BeastInput(boost::asio::io_service &service_,
-                   const Settings &fixed_settings_,
-                   const modes::Filter &filter_);
+        BeastInput(boost::asio::io_service &service_, const Settings &fixed_settings_, const modes::Filter &filter_);
 
         virtual ~BeastInput() {}
 
@@ -118,7 +115,7 @@ namespace beast {
         virtual bool low_level_write(std::shared_ptr<helpers::bytebuf> message) = 0;
         virtual void apply_connection_settings(Settings &settings) {}
 
-    private:
+      private:
         void send_settings_message(void);
         void lost_sync(void);
         void dispatch_message(void);
@@ -171,6 +168,6 @@ namespace beast {
         enum class ParserState;
         ParserState state;
     };
-};
+}; // namespace beast
 
 #endif

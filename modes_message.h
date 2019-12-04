@@ -28,107 +28,75 @@
 #ifndef MODES_MESSAGE_H
 #define MODES_MESSAGE_H
 
-#include <cstdint>
 #include <cassert>
-#include <vector>
-#include <ostream>
+#include <cstdint>
 #include <functional>
 #include <map>
+#include <ostream>
+#include <vector>
 
 #include "crc.h"
 
 namespace modes {
     // the type of one message
-    enum class MessageType {
-        INVALID,
-        MODE_AC,
-        MODE_S_SHORT,
-        MODE_S_LONG,
-        STATUS,
-        POSITION
-    };
+    enum class MessageType { INVALID, MODE_AC, MODE_S_SHORT, MODE_S_LONG, STATUS, POSITION };
 
     enum class TimestampType { UNKNOWN, TWELVEMEG, GPS };
 
-    inline std::ostream& operator<<(std::ostream &os, const MessageType &t) {
+    inline std::ostream &operator<<(std::ostream &os, const MessageType &t) {
         switch (t) {
-        case MessageType::MODE_AC: return (os << "MODE_AC");
-        case MessageType::MODE_S_SHORT: return (os << "MODE_S_SHORT");
-        case MessageType::MODE_S_LONG: return (os << "MODE_S_LONG");
-        case MessageType::STATUS: return (os << "STATUS");
-        case MessageType::POSITION: return (os << "POSITION");
-        default: return (os << "INVALID");
+        case MessageType::MODE_AC:
+            return (os << "MODE_AC");
+        case MessageType::MODE_S_SHORT:
+            return (os << "MODE_S_SHORT");
+        case MessageType::MODE_S_LONG:
+            return (os << "MODE_S_LONG");
+        case MessageType::STATUS:
+            return (os << "STATUS");
+        case MessageType::POSITION:
+            return (os << "POSITION");
+        default:
+            return (os << "INVALID");
         }
     }
 
-    inline std::size_t message_size(MessageType type)
-    {
+    inline std::size_t message_size(MessageType type) {
         // return the expected number of data bytes for a message of the given type
 
         switch (type) {
-        case MessageType::MODE_AC: return 2;
-        case MessageType::MODE_S_SHORT: return 7;
-        case MessageType::MODE_S_LONG: return 14;
-        case MessageType::STATUS: return 14;
-        case MessageType::POSITION: return 14;
-        default: return 0;
+        case MessageType::MODE_AC:
+            return 2;
+        case MessageType::MODE_S_SHORT:
+            return 7;
+        case MessageType::MODE_S_LONG:
+            return 14;
+        case MessageType::STATUS:
+            return 14;
+        case MessageType::POSITION:
+            return 14;
+        default:
+            return 0;
         }
     }
 
     // a single message
     class Message {
-    public:
-        Message()
-            : m_type(MessageType::INVALID),
-              m_timestamp_type(TimestampType::UNKNOWN),
-              m_timestamp(0),
-              m_signal(0)
-        {}
+      public:
+        Message() : m_type(MessageType::INVALID), m_timestamp_type(TimestampType::UNKNOWN), m_timestamp(0), m_signal(0) {}
 
-        Message(MessageType type_,
-                TimestampType timestamp_type_, std::uint64_t timestamp_,
-                std::uint8_t signal_, std::vector<std::uint8_t> &&data_)
-            : m_type(type_),
-              m_timestamp_type(timestamp_type_),
-              m_timestamp(timestamp_),
-              m_signal(signal_),
-              m_data(std::move(data_))
-        {
-            assert (m_data.size() == message_size(m_type));
-        }
+        Message(MessageType type_, TimestampType timestamp_type_, std::uint64_t timestamp_, std::uint8_t signal_, std::vector<std::uint8_t> &&data_) : m_type(type_), m_timestamp_type(timestamp_type_), m_timestamp(timestamp_), m_signal(signal_), m_data(std::move(data_)) { assert(m_data.size() == message_size(m_type)); }
 
-        Message(MessageType type_,
-                TimestampType timestamp_type_, std::uint64_t timestamp_,
-                std::uint8_t signal_, const std::vector<std::uint8_t> &data_)
-            : m_type(type_),
-              m_timestamp_type(timestamp_type_),
-              m_timestamp(timestamp_),
-              m_signal(signal_),
-              m_data(data_),
-              m_residual(0xFFFFFFFF)
-        {
-            assert (m_data.size() == message_size(m_type));
-        }
+        Message(MessageType type_, TimestampType timestamp_type_, std::uint64_t timestamp_, std::uint8_t signal_, const std::vector<std::uint8_t> &data_) : m_type(type_), m_timestamp_type(timestamp_type_), m_timestamp(timestamp_), m_signal(signal_), m_data(data_), m_residual(0xFFFFFFFF) { assert(m_data.size() == message_size(m_type)); }
 
-        MessageType type() const {
-            return m_type;
-        }
+        MessageType type() const { return m_type; }
 
-        std::uint64_t timestamp() const {
-            return m_timestamp;
-        }
+        std::uint64_t timestamp() const { return m_timestamp; }
 
-        TimestampType timestamp_type() const {
-            return m_timestamp_type;
-        }
+        TimestampType timestamp_type() const { return m_timestamp_type; }
 
-        std::uint8_t signal() const {
-            return m_signal;
-        }
+        std::uint8_t signal() const { return m_signal; }
 
-        const std::vector<std::uint8_t> &data() const {
-            return m_data;
-        }
+        const std::vector<std::uint8_t> &data() const { return m_data; }
 
         int df() const {
             switch (m_type) {
@@ -152,9 +120,7 @@ namespace modes {
             }
         }
 
-        bool crc_correctable() const {
-            return (crc_correctable_bit() >= 0);
-        }
+        bool crc_correctable() const { return (crc_correctable_bit() >= 0); }
 
         const std::vector<std::uint8_t> &corrected_data() const {
             if (!crc_bad()) {
@@ -174,11 +140,11 @@ namespace modes {
 
             // copy the original data and do FEC
             m_corrected_data = m_data;
-            m_corrected_data[bit/8] ^= (1 << (7 - (bit & 7)));
+            m_corrected_data[bit / 8] ^= (1 << (7 - (bit & 7)));
             return m_corrected_data;
         }
 
-    private:
+      private:
         std::uint32_t crc_residual() const {
             if (m_residual == 0xFFFFFFFF) {
                 m_residual = crc::message_residual(m_data);
@@ -218,7 +184,7 @@ namespace modes {
         mutable std::vector<std::uint8_t> m_corrected_data;
     };
 
-    std::ostream& operator<<(std::ostream &os, const Message &message);
-};
+    std::ostream &operator<<(std::ostream &os, const Message &message);
+}; // namespace modes
 
 #endif

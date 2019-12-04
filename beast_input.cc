@@ -24,9 +24,9 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <algorithm>
+#include <boost/asio.hpp>
 #include <iomanip>
 #include <iostream>
-#include <boost/asio.hpp>
 
 #include "beast_input.h"
 #include "modes_message.h"
@@ -35,37 +35,16 @@ using namespace beast;
 
 enum class BeastInput::ParserState { RESYNC, READ_1A, READ_TYPE, READ_DATA, READ_ESCAPED_1A };
 
-BeastInput::BeastInput(boost::asio::io_service &service_,
-                       const Settings &fixed_settings_,
-                       const modes::Filter &filter_)
-    : receiver_type(ReceiverType::UNKNOWN),
-      fixed_settings(fixed_settings_),
-      filter(filter_),
-      receiving_gps_timestamps(false),
-      autodetect_timer(service_),
-      reconnect_timer(service_),
-      liveness_timer(service_),
-      good_sync(false),
-      good_messages_count(0),
-      bad_bytes_count(0),
-      first_message(true),
-      state(ParserState::RESYNC)
-{
-}
+BeastInput::BeastInput(boost::asio::io_service &service_, const Settings &fixed_settings_, const modes::Filter &filter_) : receiver_type(ReceiverType::UNKNOWN), fixed_settings(fixed_settings_), filter(filter_), receiving_gps_timestamps(false), autodetect_timer(service_), reconnect_timer(service_), liveness_timer(service_), good_sync(false), good_messages_count(0), bad_bytes_count(0), first_message(true), state(ParserState::RESYNC) {}
 
-void BeastInput::start()
-{
-    try_to_connect();
-}
+void BeastInput::start() { try_to_connect(); }
 
-void BeastInput::close()
-{
+void BeastInput::close() {
     good_sync = false;
     disconnect();
 }
 
-void BeastInput::connection_established()
-{
+void BeastInput::connection_established() {
     auto self(shared_from_this());
 
     first_message = true;
@@ -74,7 +53,7 @@ void BeastInput::connection_established()
     good_messages_count = 0;
     bad_bytes_count = 0;
     state = ParserState::READ_1A;
-    
+
     autodetect_timer.cancel();
     if (fixed_settings.radarcape.on())
         receiver_type = ReceiverType::RADARCAPE;
@@ -83,34 +62,32 @@ void BeastInput::connection_established()
     else {
         receiver_type = ReceiverType::UNKNOWN;
         autodetect_timer.expires_from_now(radarcape_detect_interval);
-        autodetect_timer.async_wait([this,self] (const boost::system::error_code &ec) {
-                if (!ec) {
-                    receiver_type = ReceiverType::BEAST;
-                    send_settings_message();
-                }
-            });
+        autodetect_timer.async_wait([this, self](const boost::system::error_code &ec) {
+            if (!ec) {
+                receiver_type = ReceiverType::BEAST;
+                send_settings_message();
+            }
+        });
     }
 
     send_settings_message();
 }
 
-void BeastInput::connection_failed()
-{
+void BeastInput::connection_failed() {
     good_sync = false;
     autodetect_timer.cancel();
 
     // schedule reconnect.
     auto self(shared_from_this());
     reconnect_timer.expires_from_now(reconnect_interval);
-    reconnect_timer.async_wait([this,self] (const boost::system::error_code &ec) {
-            if (!ec) {
-                try_to_connect();
-            }
-        });
+    reconnect_timer.async_wait([this, self](const boost::system::error_code &ec) {
+        if (!ec) {
+            try_to_connect();
+        }
+    });
 }
 
-void BeastInput::send_settings_message()
-{
+void BeastInput::send_settings_message() {
     // apply fixed settings, let the filter set anything else that's not fixed
     Settings settings = fixed_settings | Settings(filter);
 
@@ -133,16 +110,14 @@ void BeastInput::send_settings_message()
     }
 }
 
-void BeastInput::set_filter(const modes::Filter &newfilter)
-{
+void BeastInput::set_filter(const modes::Filter &newfilter) {
     if (filter != newfilter) {
         filter = newfilter;
         send_settings_message();
     }
 }
 
-void BeastInput::parse_input(const helpers::bytebuf &buf)
-{
+void BeastInput::parse_input(const helpers::bytebuf &buf) {
     auto p = buf.begin();
     auto last_good_message_end = p;
 
@@ -196,74 +171,69 @@ void BeastInput::parse_input(const helpers::bytebuf &buf)
 
             break;
 
-        case ParserState::READ_DATA:
-            {
-                // Reading message contents
-                std::size_t msglen = modes::message_size(messagetype);
-                while (p != buf.end() && messagedata.size() < msglen) {
-                    uint8_t b = *p++;
-                    if (b == 0x1A) {
-                        if (p == buf.end()) {
-                            // Can't handle it this time around.
-                            state = ParserState::READ_ESCAPED_1A;
-                            break;
-                        }
-
-                        if (*p != 0x1A) {
-                            lost_sync();
-                            break;
-                        }
-
-                        // valid 1A escape, consume it
-                        ++p;
-
+        case ParserState::READ_DATA: {
+            // Reading message contents
+            std::size_t msglen = modes::message_size(messagetype);
+            while (p != buf.end() && messagedata.size() < msglen) {
+                uint8_t b = *p++;
+                if (b == 0x1A) {
+                    if (p == buf.end()) {
+                        // Can't handle it this time around.
+                        state = ParserState::READ_ESCAPED_1A;
+                        break;
                     }
 
-                    if (metadata.size() < 7)
-                        metadata.push_back(b);
-                    else
-                        messagedata.push_back(b);
+                    if (*p != 0x1A) {
+                        lost_sync();
+                        break;
+                    }
+
+                    // valid 1A escape, consume it
+                    ++p;
                 }
 
-                if (messagedata.size() >= msglen) {
-                    // Done with this message.
-                    saw_good_message();
-                    last_good_message_end = p;
-                    dispatch_message();
-                    state = ParserState::READ_1A;
-                }
-            }
-            break;
-
-        case ParserState::READ_ESCAPED_1A:
-            {
-                // This happens if we see a 1A as the final
-                // byte of a read; READ_DATA cannot handle
-                // the escape immediately and sets state to
-                // READ_ESCAPED_1A to handle the first
-                // byte of the next read.
-
-                if (*p != 0x1A) {
-                    lost_sync();
-                    break;
-                }
-
-                // valid 1A escape
                 if (metadata.size() < 7)
-                    metadata.push_back(*p++);
+                    metadata.push_back(b);
                 else
-                    messagedata.push_back(*p++);
-
-                if (messagedata.size() >= modes::message_size(messagetype)) {
-                    saw_good_message();
-                    last_good_message_end = p;
-                    dispatch_message();
-                    state = ParserState::READ_1A;
-                } else {
-                    state = ParserState::READ_DATA;
-                }
+                    messagedata.push_back(b);
             }
-            break;
+
+            if (messagedata.size() >= msglen) {
+                // Done with this message.
+                saw_good_message();
+                last_good_message_end = p;
+                dispatch_message();
+                state = ParserState::READ_1A;
+            }
+        } break;
+
+        case ParserState::READ_ESCAPED_1A: {
+            // This happens if we see a 1A as the final
+            // byte of a read; READ_DATA cannot handle
+            // the escape immediately and sets state to
+            // READ_ESCAPED_1A to handle the first
+            // byte of the next read.
+
+            if (*p != 0x1A) {
+                lost_sync();
+                break;
+            }
+
+            // valid 1A escape
+            if (metadata.size() < 7)
+                metadata.push_back(*p++);
+            else
+                messagedata.push_back(*p++);
+
+            if (messagedata.size() >= modes::message_size(messagetype)) {
+                saw_good_message();
+                last_good_message_end = p;
+                dispatch_message();
+                state = ParserState::READ_1A;
+            } else {
+                state = ParserState::READ_DATA;
+            }
+        } break;
 
         default:
             // WAT
@@ -277,27 +247,21 @@ void BeastInput::parse_input(const helpers::bytebuf &buf)
     }
 }
 
-void BeastInput::saw_good_message()
-{
+void BeastInput::saw_good_message() {
     good_sync = true;
     ++good_messages_count;
     bad_bytes_count = 0;
 }
 
-bool BeastInput::can_dispatch() const
-{
-    return (receiver_type != ReceiverType::UNKNOWN);
-}
+bool BeastInput::can_dispatch() const { return (receiver_type != ReceiverType::UNKNOWN); }
 
-void BeastInput::lost_sync()
-{
+void BeastInput::lost_sync() {
     good_messages_count = 0;
     good_sync = false;
     state = ParserState::RESYNC;
 }
 
-void BeastInput::dispatch_message()
-{
+void BeastInput::dispatch_message() {
     // monitor status messages for GPS timestamp bit
     // and for radarcape autodetection
     if (messagetype == modes::MessageType::STATUS) {
@@ -310,13 +274,13 @@ void BeastInput::dispatch_message()
 
         auto self(shared_from_this());
         liveness_timer.expires_from_now(radarcape_liveness_interval);
-        liveness_timer.async_wait([this,self] (const boost::system::error_code &ec) {
-                if (!ec) {
-                    std::cerr << what() << ": no recent status messages received" << std::endl;
-                    disconnect();
-                    connection_failed();
-                }
-            });
+        liveness_timer.async_wait([this, self](const boost::system::error_code &ec) {
+            if (!ec) {
+                std::cerr << what() << ": no recent status messages received" << std::endl;
+                disconnect();
+                connection_failed();
+            }
+        });
     }
 
     if (!can_dispatch())
@@ -324,8 +288,7 @@ void BeastInput::dispatch_message()
 
     if (first_message) {
         first_message = false;
-        std::cerr << what() << ": connected to a "
-                  << (receiver_type == ReceiverType::RADARCAPE ? "Radarcape" : "Beast") << "-style receiver" << std::endl;
+        std::cerr << what() << ": connected to a " << (receiver_type == ReceiverType::RADARCAPE ? "Radarcape" : "Beast") << "-style receiver" << std::endl;
     }
 
     if (!message_notifier)
@@ -341,21 +304,12 @@ void BeastInput::dispatch_message()
         // timestamp/signal
         messagedata.insert(messagedata.begin(), metadata.cbegin(), metadata.cend());
     } else {
-        timestamp = ((std::uint64_t)metadata[0] << 40) |
-            ((std::uint64_t)metadata[1] << 32) |
-            ((std::uint64_t)metadata[2] << 24) |
-            ((std::uint64_t)metadata[3] << 16) |
-            ((std::uint64_t)metadata[4] << 8) |
-            ((std::uint64_t)metadata[5]);
+        timestamp = ((std::uint64_t)metadata[0] << 40) | ((std::uint64_t)metadata[1] << 32) | ((std::uint64_t)metadata[2] << 24) | ((std::uint64_t)metadata[3] << 16) | ((std::uint64_t)metadata[4] << 8) | ((std::uint64_t)metadata[5]);
 
         signal = metadata[6];
     }
 
     // dispatch it
-    message_notifier(modes::Message(messagetype,
-                                    receiving_gps_timestamps ? modes::TimestampType::GPS : modes::TimestampType::TWELVEMEG,
-                                    timestamp,
-                                    signal,
-                                    std::move(messagedata)));
+    message_notifier(modes::Message(messagetype, receiving_gps_timestamps ? modes::TimestampType::GPS : modes::TimestampType::TWELVEMEG, timestamp, signal, std::move(messagedata)));
     messagedata.clear(); // make sure we leave it in a valid state after moving
 }

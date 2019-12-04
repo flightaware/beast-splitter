@@ -34,11 +34,11 @@
 
 namespace beast {
     class SerialInput : public BeastInput {
-    public:
+      public:
         typedef std::shared_ptr<SerialInput> pointer;
 
         // the standard baud rates to try, in their preferred order
-        const std::array<unsigned int,2> autobaud_standard_rates { { 3000000, 1000000 } };
+        const std::array<unsigned int, 2> autobaud_standard_rates{{3000000, 1000000}};
 
         // the initial interval to wait for sufficient good messages (see autobaud_good_messages) before changing baud rates
         const std::chrono::milliseconds autobaud_base_interval = std::chrono::milliseconds(1000);
@@ -59,19 +59,9 @@ namespace beast {
         const std::chrono::milliseconds read_interval = std::chrono::milliseconds(50);
 
         // factory method
-        static pointer create(boost::asio::io_service &service,
-                              const std::string &path,
-                              unsigned int fixed_baud_rate = 0,
-                              const Settings &fixed_settings = Settings(),
-                              const modes::Filter &filter = modes::Filter())
-        {
-            return pointer(new SerialInput(service, path,
-                                           fixed_baud_rate,
-                                           fixed_settings,
-                                           filter));
-        }
+        static pointer create(boost::asio::io_service &service, const std::string &path, unsigned int fixed_baud_rate = 0, const Settings &fixed_settings = Settings(), const modes::Filter &filter = modes::Filter()) { return pointer(new SerialInput(service, path, fixed_baud_rate, fixed_settings, filter)); }
 
-    protected:
+      protected:
         std::string what() const override;
         void try_to_connect(void) override;
         void disconnect(void) override;
@@ -80,13 +70,9 @@ namespace beast {
         bool can_dispatch(void) const override;
         void apply_connection_settings(Settings &settings) override;
 
-    private:
+      private:
         // construct a new serial input instance, don't start yet
-        SerialInput(boost::asio::io_service &service_,
-                    const std::string &path_,
-                    unsigned int fixed_baud_rate,
-                    const Settings &fixed_settings_,
-                    const modes::Filter &filter_);
+        SerialInput(boost::asio::io_service &service_, const std::string &path_, unsigned int fixed_baud_rate, const Settings &fixed_settings_, const modes::Filter &filter_);
 
         void start_reading(const boost::system::error_code &ec = boost::system::error_code());
         void advance_autobaud(void);
@@ -127,6 +113,6 @@ namespace beast {
         // have we warned about a possibly bad baud rate?
         bool warned_about_rate;
     };
-};
+}; // namespace beast
 
 #endif

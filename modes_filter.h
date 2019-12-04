@@ -35,7 +35,7 @@
 
 namespace modes {
     struct Filter {
-        std::array<bool,32> receive_df;
+        std::array<bool, 32> receive_df;
         bool receive_modeac;
         bool receive_bad_crc;
         bool receive_fec;
@@ -80,14 +80,14 @@ namespace modes {
     std::ostream &operator<<(std::ostream &os, const Filter &f);
 
     class FilterDistributor {
-    public:
+      public:
         typedef unsigned int handle;
-        typedef std::function<void(const Filter&)> FilterNotifier;
-        typedef std::function<void(const Message&)> MessageNotifier;
+        typedef std::function<void(const Filter &)> FilterNotifier;
+        typedef std::function<void(const Message &)> MessageNotifier;
 
         FilterDistributor();
-        FilterDistributor(const FilterDistributor& that) = delete;
-        FilterDistributor &operator=(const FilterDistributor& that) = delete;
+        FilterDistributor(const FilterDistributor &that) = delete;
+        FilterDistributor &operator=(const FilterDistributor &that) = delete;
 
         void set_filter_notifier(FilterNotifier f);
 
@@ -95,9 +95,9 @@ namespace modes {
         void update_client_filter(handle client, const Filter &new_filter);
         void remove_client(handle client);
 
-        void broadcast(const Message& message);
+        void broadcast(const Message &message);
 
-    private:
+      private:
         void update_upstream_filter();
 
         handle next_handle;
@@ -111,6 +111,6 @@ namespace modes {
 
         std::map<handle, client> clients;
     };
-};
+}; // namespace modes
 
 #endif

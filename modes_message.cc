@@ -23,21 +23,18 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include <iostream>
 #include <iomanip>
+#include <iostream>
 
 #include "modes_message.h"
 
 namespace modes {
-    std::ostream& operator<<(std::ostream &os, const Message &message) {
-        os << std::hex << std::setfill('0')
-           << message.type() << "@"
-           << std::setw(12) << message.timestamp()
-           << ":";
+    std::ostream &operator<<(std::ostream &os, const Message &message) {
+        os << std::hex << std::setfill('0') << message.type() << "@" << std::setw(12) << message.timestamp() << ":";
         for (auto b : message.data()) {
             os << std::setw(2) << (int)b;
         }
         os << std::dec << std::setfill(' ');
         return os;
     }
-};
+}; // namespace modes

@@ -30,26 +30,9 @@
 namespace beast {
     Settings::Settings() {}
 
-    Settings::Settings(std::uint8_t b)
-        : radarcape(true),
-          binary_format((b & 0x01) != 0),
-          filter_11_17_18((b & 0x02) != 0),
-          avrmlat((b & 0x04) != 0),
-          crc_disable((b & 0x08) != 0),
-          gps_timestamps((b & 0x10) != 0),
-          rts_handshake((b & 0x20) != 0),
-          fec_disable((b & 0x40) != 0),
-          modeac_enable((b & 0x80) != 0)
-    {}
+    Settings::Settings(std::uint8_t b) : radarcape(true), binary_format((b & 0x01) != 0), filter_11_17_18((b & 0x02) != 0), avrmlat((b & 0x04) != 0), crc_disable((b & 0x08) != 0), gps_timestamps((b & 0x10) != 0), rts_handshake((b & 0x20) != 0), fec_disable((b & 0x40) != 0), modeac_enable((b & 0x80) != 0) {}
 
-    Settings::Settings(const modes::Filter &filter)
-        : filter_11_17_18(true),
-          crc_disable(filter.receive_bad_crc),
-          gps_timestamps(filter.receive_gps_timestamps),
-          fec_disable(!filter.receive_fec),
-          modeac_enable(filter.receive_modeac),
-          filter_0_4_5(!filter.receive_df[0] && !filter.receive_df[4] && filter.receive_df[5])
-    {
+    Settings::Settings(const modes::Filter &filter) : filter_11_17_18(true), crc_disable(filter.receive_bad_crc), gps_timestamps(filter.receive_gps_timestamps), fec_disable(!filter.receive_fec), modeac_enable(filter.receive_modeac), filter_0_4_5(!filter.receive_df[0] && !filter.receive_df[4] && filter.receive_df[5]) {
         for (auto i = 0; i < 32; ++i) {
             if (filter.receive_df[i] && i != 11 && i != 17 && i != 18) {
                 filter_11_17_18 = false;
@@ -64,34 +47,77 @@ namespace beast {
             verbatim = true;
     }
 
-    Settings::Settings(const std::string &str)
-    {
+    Settings::Settings(const std::string &str) {
         // starts with everything dontcare
 
         for (char ch : str) {
             switch (ch) {
-            case 'B': radarcape = false; break;    // no equivalent dipswitch
-            case 'R': radarcape = true; break;     // no equivalent dipswitch
-            case 'c': binary_format = false; break;
-            case 'C': binary_format = true; break;
-            case 'd': filter_11_17_18 = false; break;
-            case 'D': filter_11_17_18 = true; break;
-            case 'e': avrmlat = false; break;
-            case 'E': avrmlat = true; break;
-            case 'f': crc_disable = false; break;
-            case 'F': crc_disable = true; break;
-            case 'g': gps_timestamps = false; break;
-            case 'G': gps_timestamps = true; break;
-            case 'h': rts_handshake = false; break;
-            case 'H': rts_handshake = true; break;
-            case 'i': fec_disable = false; break;
-            case 'I': fec_disable = true; break;
-            case 'j': modeac_enable = false; break;
-            case 'J': modeac_enable = true; break;
-            case 'k': filter_0_4_5 = false; break; // this is g/G on the Beast, but we separate it out
-            case 'K': filter_0_4_5 = true; break;
-            case 'v': verbatim = false; break;
-            case 'V': verbatim = true; break;
+            case 'B':
+                radarcape = false;
+                break; // no equivalent dipswitch
+            case 'R':
+                radarcape = true;
+                break; // no equivalent dipswitch
+            case 'c':
+                binary_format = false;
+                break;
+            case 'C':
+                binary_format = true;
+                break;
+            case 'd':
+                filter_11_17_18 = false;
+                break;
+            case 'D':
+                filter_11_17_18 = true;
+                break;
+            case 'e':
+                avrmlat = false;
+                break;
+            case 'E':
+                avrmlat = true;
+                break;
+            case 'f':
+                crc_disable = false;
+                break;
+            case 'F':
+                crc_disable = true;
+                break;
+            case 'g':
+                gps_timestamps = false;
+                break;
+            case 'G':
+                gps_timestamps = true;
+                break;
+            case 'h':
+                rts_handshake = false;
+                break;
+            case 'H':
+                rts_handshake = true;
+                break;
+            case 'i':
+                fec_disable = false;
+                break;
+            case 'I':
+                fec_disable = true;
+                break;
+            case 'j':
+                modeac_enable = false;
+                break;
+            case 'J':
+                modeac_enable = true;
+                break;
+            case 'k':
+                filter_0_4_5 = false;
+                break; // this is g/G on the Beast, but we separate it out
+            case 'K':
+                filter_0_4_5 = true;
+                break;
+            case 'v':
+                verbatim = false;
+                break;
+            case 'V':
+                verbatim = true;
+                break;
             }
         }
 
@@ -102,8 +128,7 @@ namespace beast {
             filter_0_4_5 = false;
     }
 
-    Settings Settings::operator|(const Settings &other) const
-    {
+    Settings Settings::operator|(const Settings &other) const {
         Settings s = *this;
         s.binary_format |= other.binary_format;
         s.filter_11_17_18 |= other.filter_11_17_18;
@@ -119,24 +144,14 @@ namespace beast {
         return s;
     }
 
-    std::uint8_t Settings::to_status_byte() const
-    {
+    std::uint8_t Settings::to_status_byte() const {
         if (!radarcape)
-            return 0;   // only the radarcape has the status reporting
+            return 0; // only the radarcape has the status reporting
 
-        return
-            (binary_format ? 0x01 : 0) |
-            (filter_11_17_18 ? 0x02 : 0) |
-            (avrmlat ? 0x04 : 0) |
-            (crc_disable ? 0x08 : 0) |
-            (gps_timestamps ? 0x10 : 0) |
-            (rts_handshake ? 0x20 : 0) |
-            (fec_disable ? 0x40 : 0) |
-            (modeac_enable ? 0x80 : 0);
+        return (binary_format ? 0x01 : 0) | (filter_11_17_18 ? 0x02 : 0) | (avrmlat ? 0x04 : 0) | (crc_disable ? 0x08 : 0) | (gps_timestamps ? 0x10 : 0) | (rts_handshake ? 0x20 : 0) | (fec_disable ? 0x40 : 0) | (modeac_enable ? 0x80 : 0);
     }
 
-    modes::Filter Settings::to_filter() const
-    {
+    modes::Filter Settings::to_filter() const {
         modes::Filter f;
 
         if (filter_11_17_18) {
@@ -164,22 +179,18 @@ namespace beast {
         return f;
     }
 
-    static void add_setting(helpers::bytebuf &msg, bool onoff, char off, char on)
-    {
+    static void add_setting(helpers::bytebuf &msg, bool onoff, char off, char on) {
         msg.push_back(0x1a);
-        msg.push_back((std::uint8_t) '1');
-        msg.push_back((std::uint8_t) (onoff ? on : off));
+        msg.push_back((std::uint8_t)'1');
+        msg.push_back((std::uint8_t)(onoff ? on : off));
     }
 
-    template <bool D,char OFF,char ON>
-    static void add_setting(helpers::bytebuf &msg, const Settings::tristate<D,OFF,ON> &onoff)
-    {
+    template <bool D, char OFF, char ON> static void add_setting(helpers::bytebuf &msg, const Settings::tristate<D, OFF, ON> &onoff) {
         if (!onoff.dontcare())
             add_setting(msg, (bool)onoff, OFF, ON);
     }
 
-    helpers::bytebuf Settings::to_message() const
-    {
+    helpers::bytebuf Settings::to_message() const {
         helpers::bytebuf msg;
 
         if (radarcape.dontcare())
@@ -202,8 +213,7 @@ namespace beast {
         return msg;
     }
 
-    Settings Settings::apply_defaults() const
-    {
+    Settings Settings::apply_defaults() const {
         Settings s;
         s.binary_format = (bool)binary_format;
         s.filter_11_17_18 = (bool)filter_11_17_18;
@@ -219,30 +229,9 @@ namespace beast {
         return s;
     }
 
-    bool Settings::operator==(const Settings &other) const
-    {
-        return
-            radarcape == other.radarcape &&
-            binary_format == other.binary_format &&
-            filter_11_17_18 == other.filter_11_17_18 &&
-            avrmlat == other.avrmlat &&
-            crc_disable == other.crc_disable &&
-            gps_timestamps == other.gps_timestamps &&
-            rts_handshake == other.rts_handshake &&
-            fec_disable == other.fec_disable &&
-            modeac_enable == other.modeac_enable &&
-            filter_0_4_5 == other.filter_0_4_5 &&
-            position_enable == other.position_enable &&
-            verbatim == other.verbatim;
+    bool Settings::operator==(const Settings &other) const {
+        return radarcape == other.radarcape && binary_format == other.binary_format && filter_11_17_18 == other.filter_11_17_18 && avrmlat == other.avrmlat && crc_disable == other.crc_disable && gps_timestamps == other.gps_timestamps && rts_handshake == other.rts_handshake && fec_disable == other.fec_disable && modeac_enable == other.modeac_enable && filter_0_4_5 == other.filter_0_4_5 && position_enable == other.position_enable && verbatim == other.verbatim;
     }
 
-    std::ostream &operator<<(std::ostream &os, const Settings &s)
-    {
-        return (os << s.radarcape << s.binary_format
-                << s.filter_11_17_18 << s.avrmlat
-                << s.crc_disable << s.gps_timestamps
-                << s.rts_handshake << s.fec_disable
-                << s.modeac_enable << s.filter_0_4_5
-                << s.verbatim);
-    }
-};
+    std::ostream &operator<<(std::ostream &os, const Settings &s) { return (os << s.radarcape << s.binary_format << s.filter_11_17_18 << s.avrmlat << s.crc_disable << s.gps_timestamps << s.rts_handshake << s.fec_disable << s.modeac_enable << s.filter_0_4_5 << s.verbatim); }
+}; // namespace beast

@@ -26,31 +26,19 @@
 #include <boost/asio.hpp>
 #include <boost/asio/steady_timer.hpp>
 
-#include <iostream>
 #include <fstream>
+#include <iostream>
 #include <sstream>
 
-#include "status_writer.h"
 #include "modes_message.h"
+#include "status_writer.h"
 
 namespace asio = boost::asio;
 
 namespace splitter {
-    StatusWriter::StatusWriter(asio::io_service &service_,
-                               modes::FilterDistributor &distributor_,
-                               beast::BeastInput::pointer input_,
-                               const std::string &path_)
-        : service(service_),
-          distributor(distributor_),
-          input(input_),
-          path(path_),
-          timeout_timer(service_)
-    {
-        temppath = path_ + ".new";
-    }
+    StatusWriter::StatusWriter(asio::io_service &service_, modes::FilterDistributor &distributor_, beast::BeastInput::pointer input_, const std::string &path_) : service(service_), distributor(distributor_), input(input_), path(path_), timeout_timer(service_) { temppath = path_ + ".new"; }
 
-    void StatusWriter::start()
-    {
+    void StatusWriter::start() {
         auto self(shared_from_this());
 
         modes::Filter filter;
@@ -60,22 +48,19 @@ namespace splitter {
         reset_timeout();
     }
 
-    void StatusWriter::close()
-    {
+    void StatusWriter::close() {
         timeout_timer.cancel();
         distributor.remove_client(filter_handle);
     }
 
-    void StatusWriter::reset_timeout()
-    {
+    void StatusWriter::reset_timeout() {
         auto self(shared_from_this());
 
         timeout_timer.expires_from_now(timeout_interval); // will cancel previous async_wait
         timeout_timer.async_wait(std::bind(&StatusWriter::status_timeout, self, std::placeholders::_1));
     }
 
-    void StatusWriter::status_timeout(const boost::system::error_code &ec)
-    {
+    void StatusWriter::status_timeout(const boost::system::error_code &ec) {
         if (ec == boost::asio::error::operation_aborted)
             return;
 
@@ -89,8 +74,7 @@ namespace splitter {
         }
     }
 
-    void StatusWriter::write(const modes::Message &message)
-    {
+    void StatusWriter::write(const modes::Message &message) {
         if (message.type() != modes::MessageType::STATUS)
             return;
 
@@ -119,7 +103,7 @@ namespace splitter {
 
         if (!(data[2] & 0x80)) {
             // Old style message. Assume it's good if abs(degradation) < 45ms
-            if (data[1] <= 3 || data[1] >= (256-3)) {
+            if (data[1] <= 3 || data[1] >= (256 - 3)) {
                 write_status_file("green", "Receiver synchronized to GPS time");
             } else {
                 write_status_file("amber", "Receiver more than 45ns from GPS time");
@@ -170,8 +154,7 @@ namespace splitter {
         write_status_file("red", status_buffer.str());
     }
 
-    void StatusWriter::write_status_file(const std::string &gps_color, const std::string &gps_message)
-    {
+    void StatusWriter::write_status_file(const std::string &gps_color, const std::string &gps_message) {
         // This is simple enough we don't bother with a JSON library.
         // NB: we assume that the status messages do not need escaping.
 
@@ -186,27 +169,18 @@ namespace splitter {
             std::string radio_color = (input->is_connected() ? "green" : "red");
             std::string radio_message = (input->is_connected() ? "Connected to receiver" : "Not connected to receiver");
 
-            outf << "  \"radio\"    : {" << std::endl
-                 << "    \"status\"  : \"" << (input->is_connected() ? "green" : "red") << "\"," << std::endl
-                 << "    \"message\" : \"" << (input->is_connected() ? "Connected to receiver" : "Not connected to receiver") << "\"" << std::endl
-                 << "  }," << std::endl;
+            outf << "  \"radio\"    : {" << std::endl << "    \"status\"  : \"" << (input->is_connected() ? "green" : "red") << "\"," << std::endl << "    \"message\" : \"" << (input->is_connected() ? "Connected to receiver" : "Not connected to receiver") << "\"" << std::endl << "  }," << std::endl;
         }
 
         if (!gps_color.empty()) {
-            outf << "  \"gps\"      : {" << std::endl
-                 << "    \"status\"  : \"" << gps_color << "\"," << std::endl
-                 << "    \"message\" : \"" << gps_message << "\"" << std::endl
-                 << "  }," << std::endl;
+            outf << "  \"gps\"      : {" << std::endl << "    \"status\"  : \"" << gps_color << "\"," << std::endl << "    \"message\" : \"" << gps_message << "\"" << std::endl << "  }," << std::endl;
         }
 
-        outf << "  \"time\"     : " << std::chrono::duration_cast<std::chrono::milliseconds>(now - unix_epoch).count() << "," << std::endl
-             << "  \"expiry\"   : " << std::chrono::duration_cast<std::chrono::milliseconds>(expiry - unix_epoch).count() << "," << std::endl
-             << "  \"interval\" : " << std::chrono::duration_cast<std::chrono::milliseconds>(timeout_interval).count() << std::endl
-             << "}" << std::endl;
+        outf << "  \"time\"     : " << std::chrono::duration_cast<std::chrono::milliseconds>(now - unix_epoch).count() << "," << std::endl << "  \"expiry\"   : " << std::chrono::duration_cast<std::chrono::milliseconds>(expiry - unix_epoch).count() << "," << std::endl << "  \"interval\" : " << std::chrono::duration_cast<std::chrono::milliseconds>(timeout_interval).count() << std::endl << "}" << std::endl;
         outf.close();
 
         if (outf) {
             std::rename(temppath.c_str(), path.c_str());
         }
     }
-}
+} // namespace splitter

@@ -29,8 +29,8 @@
 #define CRC_H
 
 #include <cstdint>
-#include <vector>
 #include <map>
+#include <vector>
 
 namespace crc {
     namespace detail {
@@ -41,8 +41,7 @@ namespace crc {
     }; // namespace detail
 
     // Compute the Mode S CRC across the given iterator range
-    template <class InputIterator>
-    std::uint32_t crc(InputIterator first, InputIterator last) {
+    template <class InputIterator> std::uint32_t crc(InputIterator first, InputIterator last) {
         std::uint32_t c = 0;
         for (InputIterator i = first; i != last; ++i) {
             c = (c << 8) ^ detail::crc_table[*i ^ ((c & 0xff0000) >> 16)];
@@ -57,9 +56,9 @@ namespace crc {
             return 0;
         } else {
             auto residual = crc(message.begin(), message.end() - 3);
-            residual ^= (message[len-3] << 16);
-            residual ^= (message[len-2] << 8);
-            residual ^= (message[len-1]);
+            residual ^= (message[len - 3] << 16);
+            residual ^= (message[len - 2] << 8);
+            residual ^= (message[len - 1]);
             return residual;
         }
     }

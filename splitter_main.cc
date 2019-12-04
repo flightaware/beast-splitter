@@ -24,8 +24,8 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "beast_input.h"
-#include "beast_input_serial.h"
 #include "beast_input_net.h"
+#include "beast_input_serial.h"
 #include "beast_output.h"
 #include "modes_filter.h"
 #include "status_writer.h"
@@ -35,8 +35,8 @@
 #include <boost/program_options.hpp>
 #include <boost/regex.hpp>
 
-#include <memory>
 #include <iostream>
+#include <memory>
 
 namespace po = boost::program_options;
 using boost::asio::ip::tcp;
@@ -56,10 +56,7 @@ struct listen_option : output_option {};
 struct connect_option : output_option {};
 
 // Specializations of validate for --listen / --connect / --net
-void validate(boost::any& v,
-              const std::vector<std::string>& values,
-              net_option* target_type, int)
-{
+void validate(boost::any &v, const std::vector<std::string> &values, net_option *target_type, int) {
     po::validators::check_first_occurrence(v);
     const std::string &s = po::validators::get_single_string(values);
 
@@ -75,10 +72,7 @@ void validate(boost::any& v,
     }
 }
 
-void validate(boost::any& v,
-              const std::vector<std::string>& values,
-              connect_option* target_type, int)
-{
+void validate(boost::any &v, const std::vector<std::string> &values, connect_option *target_type, int) {
     po::validators::check_first_occurrence(v);
     const std::string &s = po::validators::get_single_string(values);
 
@@ -95,10 +89,7 @@ void validate(boost::any& v,
     }
 }
 
-void validate(boost::any& v,
-              const std::vector<std::string>& values,
-              listen_option* target_type, int)
-{
+void validate(boost::any &v, const std::vector<std::string> &values, listen_option *target_type, int) {
     po::validators::check_first_occurrence(v);
     const std::string &s = po::validators::get_single_string(values);
 
@@ -116,10 +107,7 @@ void validate(boost::any& v,
 }
 
 namespace beast {
-    void validate(boost::any& v,
-                  const std::vector<std::string>& values,
-                  beast::Settings* target_type, long int)
-    {
+    void validate(boost::any &v, const std::vector<std::string> &values, beast::Settings *target_type, long int) {
         po::validators::check_first_occurrence(v);
         const std::string &s = po::validators::get_single_string(values);
 
@@ -130,25 +118,17 @@ namespace beast {
             throw po::validation_error(po::validation_error::invalid_option_value);
         }
     }
-}
+} // namespace beast
 
 #define EXIT_NO_RESTART (64)
 
-static int realmain(int argc, char **argv)
-{
+static int realmain(int argc, char **argv) {
     boost::asio::io_service io_service;
     modes::FilterDistributor distributor;
 
     po::options_description desc("Allowed options");
-    desc.add_options()
-        ("help", "produce help message")
-        ("serial", po::value<std::string>(), "read from given serial device")
-        ("net", po::value<net_option>(), "read from given network host:port")
-        ("status-file", po::value<std::string>(), "set path to status file")
-        ("fixed-baud", po::value<unsigned>()->default_value(0), "set a fixed baud rate, or 0 for autobauding")
-        ("listen", po::value< std::vector<listen_option> >(), "specify a [host:]port[:settings] to listen on")
-        ("connect", po::value< std::vector<connect_option> >(), "specify a host:port[:settings] to connect to")
-        ("force", po::value<beast::Settings>()->default_value(beast::Settings()), "specify settings to force on or off when configuring the Beast");
+    desc.add_options()("help", "produce help message")("serial", po::value<std::string>(), "read from given serial device")("net", po::value<net_option>(), "read from given network host:port")("status-file", po::value<std::string>(), "set path to status file")("fixed-baud", po::value<unsigned>()->default_value(0), "set a fixed baud rate, or 0 for autobauding")("listen", po::value<std::vector<listen_option>>(), "specify a [host:]port[:settings] to listen on")(
+        "connect", po::value<std::vector<connect_option>>(), "specify a host:port[:settings] to connect to")("force", po::value<beast::Settings>()->default_value(beast::Settings()), "specify settings to force on or off when configuring the Beast");
 
     po::variables_map opts;
 
@@ -174,16 +154,10 @@ static int realmain(int argc, char **argv)
 
     beast::BeastInput::pointer input;
     if (opts.count("serial")) {
-        input = beast::SerialInput::create(io_service,
-                                           opts["serial"].as<std::string>(),
-                                           opts["fixed-baud"].as<unsigned>(),
-                                           opts["force"].as<beast::Settings>());
+        input = beast::SerialInput::create(io_service, opts["serial"].as<std::string>(), opts["fixed-baud"].as<unsigned>(), opts["force"].as<beast::Settings>());
     } else if (opts.count("net")) {
         auto net = opts["net"].as<net_option>();
-        input = beast::NetInput::create(io_service,
-                                        net.host,
-                                        net.port,
-                                        opts["force"].as<beast::Settings>());
+        input = beast::NetInput::create(io_service, net.host, net.port, opts["force"].as<beast::Settings>());
     } else {
         std::cerr << "A --serial or --net argument is needed" << std::endl;
         std::cerr << desc << std::endl;
@@ -195,7 +169,7 @@ static int realmain(int argc, char **argv)
     tcp::resolver resolver(io_service);
 
     if (opts.count("listen")) {
-        for (auto l : opts["listen"].as< std::vector<listen_option> >()) {
+        for (auto l : opts["listen"].as<std::vector<listen_option>>()) {
             tcp::resolver::query query(l.host, l.port, tcp::resolver::query::passive);
             boost::system::error_code ec;
 
@@ -226,7 +200,7 @@ static int realmain(int argc, char **argv)
     }
 
     if (opts.count("connect")) {
-        for (auto l : opts["connect"].as< std::vector<connect_option> >()) {
+        for (auto l : opts["connect"].as<std::vector<connect_option>>()) {
             auto connector = beast::SocketConnector::create(io_service, l.host, l.port, distributor, l.settings);
             connector->start();
         }
@@ -244,8 +218,7 @@ static int realmain(int argc, char **argv)
     return 0;
 }
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
     try {
         return realmain(argc, argv);
     } catch (std::exception &e) {

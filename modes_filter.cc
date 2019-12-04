@@ -28,17 +28,7 @@
 #include <iostream>
 
 namespace modes {
-    Filter::Filter()
-        : receive_modeac(false),
-          receive_bad_crc(false),
-          receive_fec(false),
-          receive_status(false),
-          receive_gps_timestamps(false),
-          receive_position(false),
-          receive_verbatim(false)
-    {
-        receive_df.fill(false);
-    }
+    Filter::Filter() : receive_modeac(false), receive_bad_crc(false), receive_fec(false), receive_status(false), receive_gps_timestamps(false), receive_position(false), receive_verbatim(false) { receive_df.fill(false); }
 
     void Filter::inplace_combine(const Filter &two) {
         for (std::size_t i = 0; i < receive_df.size(); ++i)
@@ -53,35 +43,22 @@ namespace modes {
         receive_verbatim = receive_verbatim || two.receive_verbatim;
     }
 
-    Filter Filter::combine(const Filter &one, const Filter &two)
-    {
+    Filter Filter::combine(const Filter &one, const Filter &two) {
         Filter newFilter = one;
         newFilter.inplace_combine(two);
         return newFilter;
     }
 
-    bool Filter::operator==(const Filter &other) const
-    {
+    bool Filter::operator==(const Filter &other) const {
         if (this == &other)
             return true;
 
-        return (receive_modeac == other.receive_modeac &&
-                receive_bad_crc == other.receive_bad_crc &&
-                receive_fec == other.receive_fec &&
-                receive_status == other.receive_status &&
-                receive_gps_timestamps == other.receive_gps_timestamps &&
-                receive_position == other.receive_position &&
-                receive_verbatim == other.receive_verbatim &&
-                receive_df == other.receive_df);
+        return (receive_modeac == other.receive_modeac && receive_bad_crc == other.receive_bad_crc && receive_fec == other.receive_fec && receive_status == other.receive_status && receive_gps_timestamps == other.receive_gps_timestamps && receive_position == other.receive_position && receive_verbatim == other.receive_verbatim && receive_df == other.receive_df);
     }
 
-    bool Filter::operator!=(const Filter &other) const
-    {
-        return !(*this == other);
-    }
+    bool Filter::operator!=(const Filter &other) const { return !(*this == other); }
 
-    std::ostream &operator<<(std::ostream &os, const Filter &f)
-    {
+    std::ostream &operator<<(std::ostream &os, const Filter &f) {
         os << "Filter[ ";
         if (f.receive_modeac)
             os << "modeac ";
@@ -104,32 +81,18 @@ namespace modes {
         return os;
     }
 
-    FilterDistributor::FilterDistributor()
-        : next_handle(0)
-    {
-    }
+    FilterDistributor::FilterDistributor() : next_handle(0) {}
 
-    void FilterDistributor::set_filter_notifier(FilterNotifier f)
-    {
-        filter_notifier = f;
-    }
+    void FilterDistributor::set_filter_notifier(FilterNotifier f) { filter_notifier = f; }
 
-    FilterDistributor::handle FilterDistributor::add_client(MessageNotifier message_notifier,
-                                                            const Filter &initial_filter)
-    {
+    FilterDistributor::handle FilterDistributor::add_client(MessageNotifier message_notifier, const Filter &initial_filter) {
         handle h = next_handle++;
-        clients[h] = {
-            message_notifier,
-            initial_filter,
-            false
-        };
+        clients[h] = {message_notifier, initial_filter, false};
         update_upstream_filter();
         return h;
     }
 
-    void FilterDistributor::update_client_filter(handle h,
-                                                 const Filter &new_filter)
-    {
+    void FilterDistributor::update_client_filter(handle h, const Filter &new_filter) {
         auto i = clients.find(h);
         if (i == clients.end())
             return;
@@ -145,8 +108,7 @@ namespace modes {
         update_upstream_filter();
     }
 
-    void FilterDistributor::remove_client(handle h)
-    {
+    void FilterDistributor::remove_client(handle h) {
         auto i = clients.find(h);
         if (i == clients.end())
             return;
@@ -159,9 +121,8 @@ namespace modes {
         update_upstream_filter();
     }
 
-    void FilterDistributor::broadcast(const Message &message)
-    {
-        for (auto i = clients.begin(); i != clients.end(); ) {
+    void FilterDistributor::broadcast(const Message &message) {
+        for (auto i = clients.begin(); i != clients.end();) {
             client &c = i->second;
             if (!c.deleted && c.filter(message))
                 c.notifier(message);
@@ -173,8 +134,7 @@ namespace modes {
         }
     }
 
-    void FilterDistributor::update_upstream_filter()
-    {
+    void FilterDistributor::update_upstream_filter() {
         if (!filter_notifier)
             return;
 
@@ -188,4 +148,4 @@ namespace modes {
 
         filter_notifier(f);
     }
-};
+}; // namespace modes
