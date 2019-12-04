@@ -23,45 +23,50 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#include <iostream>
+#include <iomanip>
+
 #include "crc.h"
 
 #include <boost/preprocessor/repetition/enum.hpp>
 
-namespace crc::detail {
-    // generates the CRC table at compile time (!)
-    const std::uint32_t crc_polynomial = 0xfff409U;
+namespace crc {
+    namespace detail {
+        // generates the CRC table at compile time (!)
+        const std::uint32_t crc_polynomial = 0xfff409U;
 
-    template <std::uint32_t c, int k = 8>
-    struct crcgen : crcgen<((c & 0x00800000) ? crc_polynomial : 0) ^ (c << 1), k - 1> {};
+        template <std::uint32_t c, int k = 8>
+        struct crcgen : crcgen<((c & 0x00800000) ? crc_polynomial : 0) ^ (c << 1), k - 1> {};
 
-    template <std::uint32_t c>
-    struct crcgen<c, 0>
-    {
-        enum { value = (c & 0x00FFFFFF) };
-    };
+        template <std::uint32_t c>
+        struct crcgen<c, 0>
+        {
+            enum { value = (c & 0x00FFFFFF) };
+        };
 
 #define CRCGEN(Z, N, _) detail::crcgen<N << 16>::value
-    std::uint32_t crc_table[256] = { BOOST_PP_ENUM(256, CRCGEN, _) };
+        std::uint32_t crc_table[256] = { BOOST_PP_ENUM(256, CRCGEN, _) };
 #undef CRCGEN
 
-    std::map<std::uint32_t,unsigned> syndromes_short;
-    std::map<std::uint32_t,unsigned> syndromes_long;
+        std::map<std::uint32_t,unsigned> syndromes_short;
+        std::map<std::uint32_t,unsigned> syndromes_long;
 
-    void init_syndromes() {
-        syndromes_short.clear();
-        std::vector<std::uint8_t> message_short(56 / 8);
-        for (unsigned i = 5; i < 56; ++i) {
-            message_short[i/8] ^= 1 << (7 - (i & 7));
-            syndromes_short[message_residual(message_short)] = i;
-            message_short[i/8] ^= 1 << (7 - (i & 7));
-        }
+        void init_syndromes() {
+            syndromes_short.clear();
+            std::vector<std::uint8_t> message_short(56 / 8);
+            for (unsigned i = 5; i < 56; ++i) {
+                message_short[i/8] ^= 1 << (7 - (i & 7));
+                syndromes_short[message_residual(message_short)] = i;
+                message_short[i/8] ^= 1 << (7 - (i & 7));
+            }
 
-        syndromes_long.clear();
-        std::vector<std::uint8_t> message_long(112 / 8);
-        for (unsigned i = 5; i < 112; ++i) {
-            message_long[i/8] ^= 1 << (7 - (i & 7));
-            syndromes_long[message_residual(message_long)] = i;
-            message_long[i/8] ^= 1 << (7 - (i & 7));
+            syndromes_long.clear();
+            std::vector<std::uint8_t> message_long(112 / 8);
+            for (unsigned i = 5; i < 112; ++i) {
+                message_long[i/8] ^= 1 << (7 - (i & 7));
+                syndromes_long[message_residual(message_long)] = i;
+                message_long[i/8] ^= 1 << (7 - (i & 7));
+            }
         }
     }
 }; // namespace crc::detail
