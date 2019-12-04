@@ -1,0 +1,15 @@
+---
+Language:        Cpp
+BasedOnStyle:    LLVM
+AlignEscapedNewlinesLeft: true
+BraceWrapping:
+  AfterClass:      true
+  AfterFunction:   true
+ColumnLimit:     500
+IndentWidth:     4
+ObjCBlockIndentWidth: 4
+TabWidth:        4
+UseTab:          Never
+NamespaceIndentation: All
+...
+
