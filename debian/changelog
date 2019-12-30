@@ -1,4 +1,4 @@
-beast-splitter (3.8.0) UNRELEASED; urgency=medium
+beast-splitter (3.8.0) stable; urgency=medium
 
   * Add support for verbatim (v/V) mode
   * Add support for 1-bit FEC, required when there is a mix of verbatim and
@@ -6,7 +6,7 @@ beast-splitter (3.8.0) UNRELEASED; urgency=medium
   * Only send settings messages upstream when the requested settings have
     actually changed
 
- -- Oliver Jowett <oliver.jowett@flightaware.com>  Thu, 07 Nov 2019 11:17:35 +0800
+ -- Oliver Jowett <oliver.jowett@flightaware.com>  Mon, 30 Dec 2019 22:12:47 +0800
 
 beast-splitter (3.7.2) stable; urgency=medium
 
