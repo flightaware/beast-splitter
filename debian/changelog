@@ -1,3 +1,9 @@
+beast-splitter (3.8.1~dev) UNRELEASED; urgency=medium
+
+  * in development
+
+ -- Oliver Jowett <oliver.jowett@flightaware.com>  Wed, 22 Jan 2020 19:09:43 +0800
+
 beast-splitter (3.8.0) stable; urgency=medium
 
   * Add support for verbatim (v/V) mode
