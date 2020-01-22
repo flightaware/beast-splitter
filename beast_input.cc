@@ -53,6 +53,7 @@ void BeastInput::connection_established() {
     good_messages_count = 0;
     bad_bytes_count = 0;
     state = ParserState::READ_1A;
+    current_settings = Settings();
 
     autodetect_timer.cancel();
     if (fixed_settings.radarcape.on())
