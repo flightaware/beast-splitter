@@ -1,3 +1,9 @@
+beast-splitter (3.8.2~dev) UNRELEASED; urgency=medium
+
+  * In development
+
+ -- Eric Tran <eric.tran@flightaware.com>  Fri, 11 Sep 2020 17:39:00 -6000
+
 beast-splitter (3.8.1) stable; urgency=medium
 
   * Ensure that we send a new settings message on each new (source-side)
