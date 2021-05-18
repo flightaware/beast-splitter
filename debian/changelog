@@ -1,3 +1,9 @@
+beast_splitter (6.0~dev) UNRELEASED; urgency=medium
+
+  * In development
+
+ -- Eric Tran <eric.tran@flightaware.com>  Tue, 18 May 2021 16:00:00 -6000
+
 beast-splitter (5.0) stable; urgency=medium
 
   * No-change release for PiAware 5
