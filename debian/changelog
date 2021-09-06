@@ -1,3 +1,9 @@
+beast-splitter (6.1) stable; urgency=medium
+
+  * No-change release for PiAware 6.1
+
+ -- Oliver Jowett <oliver.jowett@flightaware.com>  Mon, 06 Sep 2021 16:01:31 +0800
+
 beast-splitter (6.0) stable; urgency=medium
 
   * No-change release for PiAware 6
