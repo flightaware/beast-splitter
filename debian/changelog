@@ -1,3 +1,9 @@
+beast-splitter (7.1) stable; urgency=medium
+
+  * No-change release for PiAware 7.1
+
+ -- Eric Tran <eric.tran@flightaware.com>  Tue, 11 Jan 2022 07:44:22 -0600
+
 beast-splitter (7.0) stable; urgency=medium
 
   * No-change release for PiAware 7.0
