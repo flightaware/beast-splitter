@@ -7,5 +7,11 @@ export DEB_BUILD_MAINT_OPTIONS = hardening=+all
 DPKG_EXPORT_BUILDFLAGS = 1
 include /usr/share/dpkg/buildflags.mk
 
+override_dh_installinit:
+	dh_installinit --no-stop-on-upgrade --no-restart-after-upgrade
+
+override_dh_systemd_start:
+	dh_systemd_start --no-stop-on-upgrade --no-restart-after-upgrade --name=beast-splitter.service
+
 %:
 	dh $@ --with=systemd
