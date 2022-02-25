@@ -1,3 +1,9 @@
+beast-splitter (7.2~dev) UNRELEASED; urgency=medium
+
+  * No change release for 7.2
+
+ -- Eric Tran <eric.tran@flightaware.com>  Fri, 25 Feb 2022 10:50:35 -0600
+
 beast-splitter (7.1) stable; urgency=medium
 
   * Preserve beast-splitter postinst logic during upgrade
