@@ -95,18 +95,20 @@ namespace splitter {
         //    02: 1=tracking sats, 0=no sats
         //    01: 1=antenna OK, 0=antenna fault
 
+        int pps_offset = (std::int8_t)data[1];
+
         if (!(data[0] & 0x10)) {
             // 12MHz mode
-            write_status_file("red", "Not in GPS timestamp mode");
+            write_status_file("red", "Not in GPS timestamp mode", pps_offset);
             return;
         }
 
         if (!(data[2] & 0x80)) {
             // Old style message. Assume it's good if abs(degradation) < 45ms
-            if (data[1] <= 3 || data[1] >= (256 - 3)) {
-                write_status_file("green", "Receiver synchronized to GPS time");
+            if (pps_offset <= 3 || pps_offset >= -3) {
+                write_status_file("green", "Receiver synchronized to GPS time", pps_offset);
             } else {
-                write_status_file("amber", "Receiver more than 45ns from GPS time");
+                write_status_file("amber", "Receiver more than 45ns from GPS time", pps_offset);
             }
             return;
         }
@@ -116,9 +118,9 @@ namespace splitter {
         if (!(data[2] & 0x20)) {
             // FPGA is using GPS time
             if (data[2] & 0x10) {
-                write_status_file("green", "Receiver synchronized to GPS time");
+                write_status_file("green", "Receiver synchronized to GPS time", pps_offset);
             } else {
-                write_status_file("amber", "Receiver more than 45ns from GPS time");
+                write_status_file("amber", "Receiver more than 45ns from GPS time", pps_offset);
             }
             return;
         }
@@ -151,10 +153,10 @@ namespace splitter {
             status_buffer << *i;
         }
 
-        write_status_file("red", status_buffer.str());
+        write_status_file("red", status_buffer.str(), pps_offset);
     }
 
-    void StatusWriter::write_status_file(const std::string &gps_color, const std::string &gps_message) {
+    void StatusWriter::write_status_file(const std::string &gps_color, const std::string &gps_message, int pps_offset) {
         // This is simple enough we don't bother with a JSON library.
         // NB: we assume that the status messages do not need escaping.
 
@@ -169,14 +171,26 @@ namespace splitter {
             std::string radio_color = (input->is_connected() ? "green" : "red");
             std::string radio_message = (input->is_connected() ? "Connected to receiver" : "Not connected to receiver");
 
-            outf << "  \"radio\"    : {" << std::endl << "    \"status\"  : \"" << (input->is_connected() ? "green" : "red") << "\"," << std::endl << "    \"message\" : \"" << (input->is_connected() ? "Connected to receiver" : "Not connected to receiver") << "\"" << std::endl << "  }," << std::endl;
+            outf << "  \"radio\"    : {" << std::endl;
+            outf << "    \"status\"  : \"" << (input->is_connected() ? "green" : "red") << "\"," << std::endl;
+            outf << "    \"message\" : \"" << (input->is_connected() ? "Connected to receiver" : "Not connected to receiver") << "\"" << std::endl;
+            outf << "  }," << std::endl;
         }
 
         if (!gps_color.empty()) {
-            outf << "  \"gps\"      : {" << std::endl << "    \"status\"  : \"" << gps_color << "\"," << std::endl << "    \"message\" : \"" << gps_message << "\"" << std::endl << "  }," << std::endl;
+            outf << "  \"gps\"      : {" << std::endl;
+            outf << "    \"status\"     : \"" << gps_color << "\"," << std::endl;
+            if (pps_offset != -9999) {
+                outf << "    \"pps_offset\" : " << pps_offset << "," << std::endl;
+            }
+            outf << "    \"message\"    : \"" << gps_message << "\"" << std::endl;
+            outf << "  }," << std::endl;
         }
 
-        outf << "  \"time\"     : " << std::chrono::duration_cast<std::chrono::milliseconds>(now - unix_epoch).count() << "," << std::endl << "  \"expiry\"   : " << std::chrono::duration_cast<std::chrono::milliseconds>(expiry - unix_epoch).count() << "," << std::endl << "  \"interval\" : " << std::chrono::duration_cast<std::chrono::milliseconds>(timeout_interval).count() << std::endl << "}" << std::endl;
+        outf << "  \"time\"     : " << std::chrono::duration_cast<std::chrono::milliseconds>(now - unix_epoch).count() << "," << std::endl;
+        outf << "  \"expiry\"   : " << std::chrono::duration_cast<std::chrono::milliseconds>(expiry - unix_epoch).count() << "," << std::endl;
+        outf << "  \"interval\" : " << std::chrono::duration_cast<std::chrono::milliseconds>(timeout_interval).count() << std::endl;
+        outf << "}" << std::endl;
         outf.close();
 
         if (outf) {

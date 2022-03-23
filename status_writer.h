@@ -54,7 +54,7 @@ namespace splitter {
         void write(const modes::Message &message);
         void reset_timeout();
         void status_timeout(const boost::system::error_code &ec = boost::system::error_code());
-        void write_status_file(const std::string &gps_color = std::string(), const std::string &gps_message = std::string());
+        void write_status_file(const std::string &gps_color = std::string(), const std::string &gps_message = std::string(), int pps_offset = -9999);
 
         boost::asio::io_service &service;
         modes::FilterDistributor &distributor;
