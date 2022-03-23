@@ -1,3 +1,9 @@
+beast-splitter (7.3~dev) UNRELEASED; urgency=medium
+
+  * in development
+
+ -- Oliver Jowett <oliver.jowett@flightaware.com>  Wed, 23 Mar 2022 12:34:02 +0800
+
 beast-splitter (7.2) stable; urgency=medium
 
   * No change release for 7.2
