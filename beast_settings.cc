@@ -32,7 +32,7 @@ namespace beast {
 
     Settings::Settings(std::uint8_t b) : radarcape(true), binary_format((b & 0x01) != 0), filter_11_17_18((b & 0x02) != 0), avrmlat((b & 0x04) != 0), crc_disable((b & 0x08) != 0), gps_timestamps((b & 0x10) != 0), rts_handshake((b & 0x20) != 0), fec_disable((b & 0x40) != 0), modeac_enable((b & 0x80) != 0) {}
 
-    Settings::Settings(const modes::Filter &filter) : filter_11_17_18(true), crc_disable(filter.receive_bad_crc), gps_timestamps(filter.receive_gps_timestamps), fec_disable(!filter.receive_fec), modeac_enable(filter.receive_modeac), filter_0_4_5(!filter.receive_df[0] && !filter.receive_df[4] && filter.receive_df[5]) {
+    Settings::Settings(const modes::Filter &filter) : filter_11_17_18(true), crc_disable(filter.receive_bad_crc), gps_timestamps(filter.receive_gps_timestamps), fec_disable(!filter.receive_fec), modeac_enable(filter.receive_modeac), filter_0_4_5(!filter.receive_df[0] && !filter.receive_df[4] && filter.receive_df[5]), position_enable(filter.receive_positions) {
         for (auto i = 0; i < 32; ++i) {
             if (filter.receive_df[i] && i != 11 && i != 17 && i != 18) {
                 filter_11_17_18 = false;
@@ -130,7 +130,9 @@ namespace beast {
         // ensure settings are selfconsistent
         if (radarcape.off() && !gps_timestamps.dontcare())
             gps_timestamps = false;
-        else if (radarcape.on() && !filter_0_4_5.dontcare())
+        if (radarcape.off() && !position_enable.dontcare())
+            position_enable = false;
+        if (radarcape.on() && !filter_0_4_5.dontcare())
             filter_0_4_5 = false;
     }
 
