@@ -95,7 +95,7 @@ namespace beast {
 
       protected:
         // construct a new input instance
-        BeastInput(boost::asio::io_service &service_, const Settings &fixed_settings_, const modes::Filter &filter_);
+        BeastInput(boost::asio::io_service &service_, const Settings &fixed_settings_, const modes::Filter &filter_, std::chrono::milliseconds beast_liveness_interval_);
 
         virtual ~BeastInput() {}
 
@@ -105,6 +105,9 @@ namespace beast {
         bool have_good_sync() const { return good_sync; }
         unsigned good_messages() const { return good_messages_count; }
         unsigned bad_bytes() const { return bad_bytes_count; }
+
+        void reset_rc_liveness();
+        void reset_beast_liveness();
 
         virtual void saw_good_message(void);
         virtual bool can_dispatch(void) const;
@@ -145,7 +148,11 @@ namespace beast {
         boost::asio::steady_timer reconnect_timer;
 
         // timer that expires after radarcape_liveness_interval
-        boost::asio::steady_timer liveness_timer;
+        boost::asio::steady_timer rc_liveness_timer;
+
+        // timer that expires after beast_liveness_interval
+        std::chrono::milliseconds beast_liveness_interval;
+        boost::asio::steady_timer beast_liveness_timer;
 
         // are we currently in sync?
         bool good_sync;

@@ -127,8 +127,18 @@ static int realmain(int argc, char **argv) {
     modes::FilterDistributor distributor;
 
     po::options_description desc("Allowed options");
-    desc.add_options()("help", "produce help message")("serial", po::value<std::string>(), "read from given serial device")("net", po::value<net_option>(), "read from given network host:port")("status-file", po::value<std::string>(), "set path to status file")("fixed-baud", po::value<unsigned>()->default_value(0), "set a fixed baud rate, or 0 for autobauding")("listen", po::value<std::vector<listen_option>>(), "specify a [host:]port[:settings] to listen on")(
-        "connect", po::value<std::vector<connect_option>>(), "specify a host:port[:settings] to connect to")("force", po::value<beast::Settings>()->default_value(beast::Settings()), "specify settings to force on or off when configuring the Beast");
+    // clang-format off
+    desc.add_options()
+        ("help", "produce help message")
+        ("serial", po::value<std::string>(), "read from given serial device")
+        ("net", po::value<net_option>(), "read from given network host:port")
+        ("status-file", po::value<std::string>(), "set path to status file")
+        ("fixed-baud", po::value<unsigned>()->default_value(0), "set a fixed baud rate, or 0 for autobauding")
+        ("listen", po::value<std::vector<listen_option>>(), "specify a [host:]port[:settings] to listen on")
+        ("connect", po::value<std::vector<connect_option>>(), "specify a host:port[:settings] to connect to")
+        ("force", po::value<beast::Settings>()->default_value(beast::Settings()), "specify settings to force on or off when configuring the Beast")
+        ("beast-input-timeout", po::value<float>()->default_value(0), "input timeout in non-Radarcape mode, in floating-point seconds (zero disables)");
+    // clang-format on
 
     po::variables_map opts;
 
@@ -152,12 +162,16 @@ static int realmain(int argc, char **argv) {
         return EXIT_NO_RESTART;
     }
 
+    beast::Settings force_settings = opts["force"].as<beast::Settings>();
+    std::chrono::duration<float> beast_input_timeout_seconds(opts["beast-input-timeout"].as<float>());
+    std::chrono::milliseconds beast_input_timeout = std::chrono::duration_cast<std::chrono::milliseconds>(beast_input_timeout_seconds);
+
     beast::BeastInput::pointer input;
     if (opts.count("serial")) {
-        input = beast::SerialInput::create(io_service, opts["serial"].as<std::string>(), opts["fixed-baud"].as<unsigned>(), opts["force"].as<beast::Settings>());
+        input = beast::SerialInput::create(io_service, opts["serial"].as<std::string>(), opts["fixed-baud"].as<unsigned>(), force_settings, modes::Filter(), beast_input_timeout);
     } else if (opts.count("net")) {
         auto net = opts["net"].as<net_option>();
-        input = beast::NetInput::create(io_service, net.host, net.port, opts["force"].as<beast::Settings>());
+        input = beast::NetInput::create(io_service, net.host, net.port, force_settings, modes::Filter(), beast_input_timeout);
     } else {
         std::cerr << "A --serial or --net argument is needed" << std::endl;
         std::cerr << desc << std::endl;
