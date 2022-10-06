@@ -118,6 +118,12 @@ namespace beast {
             case 'V':
                 verbatim = true;
                 break;
+            case 'p':
+                position_enable = false;
+                break;
+            case 'P':
+                position_enable = true;
+                break;
             }
         }
 
@@ -141,6 +147,7 @@ namespace beast {
         s.filter_0_4_5 |= other.filter_0_4_5;
         s.radarcape |= other.radarcape;
         s.verbatim |= other.verbatim;
+        s.position_enable |= other.position_enable;
         return s;
     }
 
@@ -209,6 +216,7 @@ namespace beast {
         add_setting(msg, fec_disable);
         add_setting(msg, modeac_enable);
         add_setting(msg, verbatim);
+        // p/P is not a real setting
 
         return msg;
     }
@@ -226,6 +234,7 @@ namespace beast {
         s.radarcape = (bool)radarcape;
         s.filter_0_4_5 = (bool)filter_0_4_5;
         s.verbatim = (bool)verbatim;
+        s.position_enable = (bool)position_enable;
         return s;
     }
 
@@ -233,5 +242,5 @@ namespace beast {
         return radarcape == other.radarcape && binary_format == other.binary_format && filter_11_17_18 == other.filter_11_17_18 && avrmlat == other.avrmlat && crc_disable == other.crc_disable && gps_timestamps == other.gps_timestamps && rts_handshake == other.rts_handshake && fec_disable == other.fec_disable && modeac_enable == other.modeac_enable && filter_0_4_5 == other.filter_0_4_5 && position_enable == other.position_enable && verbatim == other.verbatim;
     }
 
-    std::ostream &operator<<(std::ostream &os, const Settings &s) { return (os << s.radarcape << s.binary_format << s.filter_11_17_18 << s.avrmlat << s.crc_disable << s.gps_timestamps << s.rts_handshake << s.fec_disable << s.modeac_enable << s.filter_0_4_5 << s.verbatim); }
+    std::ostream &operator<<(std::ostream &os, const Settings &s) { return (os << s.radarcape << s.binary_format << s.filter_11_17_18 << s.avrmlat << s.crc_disable << s.gps_timestamps << s.rts_handshake << s.fec_disable << s.modeac_enable << s.filter_0_4_5 << s.verbatim << s.position_enable); }
 }; // namespace beast
