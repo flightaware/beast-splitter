@@ -92,6 +92,7 @@ The available settings are:
  * i/I: FEC enabled / FEC disabled
  * j/J: Mode A/C disabled / Mode A/C enabled
  * k/K: no special filtering / do not send DF0/4/5 (only in Beast-Classic mode)
+ * p/P: disable/enable position-message reporting (only in Radarcape mode)
 
 The h/H setting is understood but ignored; hardware flow control is always
 used.
