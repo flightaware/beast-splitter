@@ -1,8 +1,8 @@
-beast-splitter (8.0) UNRELEASED; urgency=medium
+beast-splitter (8.0) stable; urgency=medium
 
   * Write Radarcape-style status message PPS offset to the json status file
 
- -- Eric Tran <eric.tran@flightaware.com>  Mon, 21 Nov 2022 09:57:02 -0600
+ -- Eric Tran <eric.tran@flightaware.com>  Tue, 06 Dec 2022 14:31:02 -0600
 
 beast-splitter (7.2) stable; urgency=medium
 
