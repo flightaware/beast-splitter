@@ -1,3 +1,9 @@
+beast-splitter (9.0~dev) UNRELEASED; urgency=medium
+
+  * in development
+
+ -- Oliver Jowett <oliver.jowett@flightaware.com>  Tue, 17 Oct 2023 20:07:28 +0800
+
 beast-splitter (8.2) stable; urgency=medium
 
   * No change release for 8.2
