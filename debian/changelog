@@ -1,6 +1,8 @@
 beast-splitter (9.0~dev) UNRELEASED; urgency=medium
 
-  * in development
+  * Add packaging support for bookworm
+  * Add packaging support for bullseye/bookworm arm64
+  * Discontinue support for stretch
 
  -- Oliver Jowett <oliver.jowett@flightaware.com>  Tue, 17 Oct 2023 20:07:28 +0800
 
