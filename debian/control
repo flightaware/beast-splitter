@@ -1,5 +1,5 @@
 Source: beast-splitter
-Section: flightfeeder/embedded
+Section: embedded
 Priority: extra
 Maintainer: FlightAware Developers <adsb-devs@flightaware.com>
 Build-Depends: debhelper(>=10), libboost-system-dev, libboost-program-options-dev, libboost-regex-dev
