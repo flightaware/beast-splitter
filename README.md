@@ -25,6 +25,15 @@ host:port to connect to via the --net option. You can use this to chain
 beast-splitter instances together: specify --listen on the beast-splitter closer
 to the Beast, and --net on the other beast-splitter.
 
+## Input side - Timeouts
+
+If the --beast-input-timeout option is set, then a Beast-Classic connection
+is expected to produce at least one valid message per timeout interval. If it
+does not, the connection is considered bad and disconnected/reconnected. This
+is useful for non-local network connections to avoid beast-splitter waiting
+indefinitely for data on a connection that has silently disconnected on the
+remote side.
+
 ## Configuring Beast settings
 
 beast-splitter will, by default, autodetect the capabilities of the Beast and

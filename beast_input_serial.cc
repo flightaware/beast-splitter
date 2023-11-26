@@ -37,7 +37,8 @@
 
 using namespace beast;
 
-SerialInput::SerialInput(boost::asio::io_service &service_, const std::string &path_, unsigned int fixed_baud_rate_, const Settings &fixed_settings_, const modes::Filter &filter_) : BeastInput(service_, fixed_settings_, filter_), path(path_), port(service_), autobaud_interval(autobaud_base_interval), autobaud_timer(service_), read_timer(service_), readbuf(std::make_shared<helpers::bytebuf>(read_buffer_size)), warned_about_rate(false) {
+SerialInput::SerialInput(boost::asio::io_service &service_, const std::string &path_, unsigned int fixed_baud_rate_, const Settings &fixed_settings_, const modes::Filter &filter_, std::chrono::milliseconds beast_liveness_interval_)
+    : BeastInput(service_, fixed_settings_, filter_, beast_liveness_interval_), path(path_), port(service_), autobaud_interval(autobaud_base_interval), autobaud_timer(service_), read_timer(service_), readbuf(std::make_shared<helpers::bytebuf>(read_buffer_size)), warned_about_rate(false) {
     // set up autobaud
     if (fixed_baud_rate_ == 0) {
         autobauding = true;
