@@ -32,7 +32,7 @@ namespace beast {
 
     Settings::Settings(std::uint8_t b) : radarcape(true), binary_format((b & 0x01) != 0), filter_11_17_18((b & 0x02) != 0), avrmlat((b & 0x04) != 0), crc_disable((b & 0x08) != 0), gps_timestamps((b & 0x10) != 0), rts_handshake((b & 0x20) != 0), fec_disable((b & 0x40) != 0), modeac_enable((b & 0x80) != 0) {}
 
-    Settings::Settings(const modes::Filter &filter) : filter_11_17_18(true), crc_disable(filter.receive_bad_crc), gps_timestamps(filter.receive_gps_timestamps), fec_disable(!filter.receive_fec), modeac_enable(filter.receive_modeac), filter_0_4_5(!filter.receive_df[0] && !filter.receive_df[4] && filter.receive_df[5]) {
+    Settings::Settings(const modes::Filter &filter) : filter_11_17_18(true), crc_disable(filter.receive_bad_crc), gps_timestamps(filter.receive_gps_timestamps), fec_disable(!filter.receive_fec), modeac_enable(filter.receive_modeac), filter_0_4_5(!filter.receive_df[0] && !filter.receive_df[4] && filter.receive_df[5]), position_enable(filter.receive_positions) {
         for (auto i = 0; i < 32; ++i) {
             if (filter.receive_df[i] && i != 11 && i != 17 && i != 18) {
                 filter_11_17_18 = false;
@@ -118,13 +118,21 @@ namespace beast {
             case 'V':
                 verbatim = true;
                 break;
+            case 'p':
+                position_enable = false;
+                break;
+            case 'P':
+                position_enable = true;
+                break;
             }
         }
 
         // ensure settings are selfconsistent
         if (radarcape.off() && !gps_timestamps.dontcare())
             gps_timestamps = false;
-        else if (radarcape.on() && !filter_0_4_5.dontcare())
+        if (radarcape.off() && !position_enable.dontcare())
+            position_enable = false;
+        if (radarcape.on() && !filter_0_4_5.dontcare())
             filter_0_4_5 = false;
     }
 
@@ -141,6 +149,7 @@ namespace beast {
         s.filter_0_4_5 |= other.filter_0_4_5;
         s.radarcape |= other.radarcape;
         s.verbatim |= other.verbatim;
+        s.position_enable |= other.position_enable;
         return s;
     }
 
@@ -209,6 +218,7 @@ namespace beast {
         add_setting(msg, fec_disable);
         add_setting(msg, modeac_enable);
         add_setting(msg, verbatim);
+        // p/P is not a real setting
 
         return msg;
     }
@@ -226,6 +236,7 @@ namespace beast {
         s.radarcape = (bool)radarcape;
         s.filter_0_4_5 = (bool)filter_0_4_5;
         s.verbatim = (bool)verbatim;
+        s.position_enable = (bool)position_enable;
         return s;
     }
 
@@ -233,5 +244,5 @@ namespace beast {
         return radarcape == other.radarcape && binary_format == other.binary_format && filter_11_17_18 == other.filter_11_17_18 && avrmlat == other.avrmlat && crc_disable == other.crc_disable && gps_timestamps == other.gps_timestamps && rts_handshake == other.rts_handshake && fec_disable == other.fec_disable && modeac_enable == other.modeac_enable && filter_0_4_5 == other.filter_0_4_5 && position_enable == other.position_enable && verbatim == other.verbatim;
     }
 
-    std::ostream &operator<<(std::ostream &os, const Settings &s) { return (os << s.radarcape << s.binary_format << s.filter_11_17_18 << s.avrmlat << s.crc_disable << s.gps_timestamps << s.rts_handshake << s.fec_disable << s.modeac_enable << s.filter_0_4_5 << s.verbatim); }
+    std::ostream &operator<<(std::ostream &os, const Settings &s) { return (os << s.radarcape << s.binary_format << s.filter_11_17_18 << s.avrmlat << s.crc_disable << s.gps_timestamps << s.rts_handshake << s.fec_disable << s.modeac_enable << s.filter_0_4_5 << s.verbatim << s.position_enable); }
 }; // namespace beast
