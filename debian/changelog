@@ -1,3 +1,9 @@
+beast-splitter (10.0~dev) UNRELEASED; urgency=medium
+
+  * No change release for 10.0~dev
+
+ -- Nick Wan <nicholas.wan@flightaware.com>  Tue, 03 Dec 2024 21:49:28 +0000
+
 beast-splitter (9.0) stable; urgency=medium
 
   * Add packaging support for bookworm
