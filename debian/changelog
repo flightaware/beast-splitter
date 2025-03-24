@@ -1,3 +1,9 @@
+beast-splitter (10.0.1~dev) UNRELEASED; urgency=medium
+
+  * No change release for 10.0.1
+
+ -- Nicholas Wan <nicholas.wan@flightaware.com>  Mon, 24 Mar 2025 10:30:47 -0500
+
 beast-splitter (10.0) stable; urgency=medium
 
   * No change release for 10.0
