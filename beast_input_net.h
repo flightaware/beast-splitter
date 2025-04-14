@@ -41,7 +41,7 @@ namespace beast {
         const size_t read_buffer_size = 4096;
 
         // factory method
-        static pointer create(boost::asio::io_service &service, const std::string &host, const std::string &port_or_service, const Settings &fixed_settings = Settings(), const modes::Filter &filter = modes::Filter()) { return pointer(new NetInput(service, host, port_or_service, fixed_settings, filter)); }
+        static pointer create(boost::asio::io_service &service, const std::string &host, const std::string &port_or_service, const Settings &fixed_settings, const modes::Filter &filter, std::chrono::milliseconds beast_liveness_interval) { return pointer(new NetInput(service, host, port_or_service, fixed_settings, filter, beast_liveness_interval)); }
 
       protected:
         std::string what() const override;
@@ -51,7 +51,7 @@ namespace beast {
 
       private:
         // construct a new net input instance, don't start yet
-        NetInput(boost::asio::io_service &service_, const std::string &host_, const std::string &port_or_service_, const Settings &fixed_settings_, const modes::Filter &filter_);
+        NetInput(boost::asio::io_service &service_, const std::string &host_, const std::string &port_or_service_, const Settings &fixed_settings_, const modes::Filter &filter_, std::chrono::milliseconds beast_liveness_interval_);
 
         void resolve_and_connect(const boost::system::error_code &ec = boost::system::error_code());
         void try_next_endpoint();
@@ -65,7 +65,6 @@ namespace beast {
 
         boost::asio::ip::tcp::resolver resolver;
         boost::asio::ip::tcp::socket socket;
-        boost::asio::steady_timer reconnect_timer;
         boost::asio::ip::tcp::resolver::iterator next_endpoint;
 
         // cached buffer used for reads

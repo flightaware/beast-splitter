@@ -59,7 +59,7 @@ namespace beast {
         const std::chrono::milliseconds read_interval = std::chrono::milliseconds(50);
 
         // factory method
-        static pointer create(boost::asio::io_service &service, const std::string &path, unsigned int fixed_baud_rate = 0, const Settings &fixed_settings = Settings(), const modes::Filter &filter = modes::Filter()) { return pointer(new SerialInput(service, path, fixed_baud_rate, fixed_settings, filter)); }
+        static pointer create(boost::asio::io_service &service, const std::string &path, unsigned int fixed_baud_rate, const Settings &fixed_settings, const modes::Filter &filter, std::chrono::milliseconds beast_liveness_interval) { return pointer(new SerialInput(service, path, fixed_baud_rate, fixed_settings, filter, beast_liveness_interval)); }
 
       protected:
         std::string what() const override;
@@ -72,7 +72,7 @@ namespace beast {
 
       private:
         // construct a new serial input instance, don't start yet
-        SerialInput(boost::asio::io_service &service_, const std::string &path_, unsigned int fixed_baud_rate, const Settings &fixed_settings_, const modes::Filter &filter_);
+        SerialInput(boost::asio::io_service &service_, const std::string &path_, unsigned int fixed_baud_rate, const Settings &fixed_settings_, const modes::Filter &filter_, std::chrono::milliseconds beast_liveness_interval_);
 
         void start_reading(const boost::system::error_code &ec = boost::system::error_code());
         void advance_autobaud(void);

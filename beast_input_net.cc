@@ -37,7 +37,7 @@
 using namespace beast;
 using boost::asio::ip::tcp;
 
-NetInput::NetInput(boost::asio::io_service &service_, const std::string &host_, const std::string &port_or_service_, const Settings &fixed_settings_, const modes::Filter &filter_) : BeastInput(service_, fixed_settings_, filter_), host(host_), port_or_service(port_or_service_), resolver(service_), socket(service_), reconnect_timer(service_), readbuf(std::make_shared<helpers::bytebuf>(read_buffer_size)), warned_about_framing(false) {}
+NetInput::NetInput(boost::asio::io_service &service_, const std::string &host_, const std::string &port_or_service_, const Settings &fixed_settings_, const modes::Filter &filter_, std::chrono::milliseconds beast_liveness_interval_) : BeastInput(service_, fixed_settings_, filter_, beast_liveness_interval_), host(host_), port_or_service(port_or_service_), resolver(service_), socket(service_), readbuf(std::make_shared<helpers::bytebuf>(read_buffer_size)), warned_about_framing(false) {}
 
 std::string NetInput::what() const { return std::string("net(") + host + std::string(":") + port_or_service + std::string(")"); }
 
