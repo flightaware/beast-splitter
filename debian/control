@@ -8,5 +8,5 @@ Homepage: https://github.com/flightaware
 
 Package: beast-splitter
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}
+Depends: ${shlibs:Depends}, ${misc:Depends}, adduser
 Description: Mode S Beast data feeder
