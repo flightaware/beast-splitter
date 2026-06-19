@@ -35,7 +35,8 @@ using namespace beast;
 
 enum class BeastInput::ParserState { RESYNC, READ_1A, READ_TYPE, READ_DATA, READ_ESCAPED_1A };
 
-BeastInput::BeastInput(boost::asio::io_service &service_, const Settings &fixed_settings_, const modes::Filter &filter_) : receiver_type(ReceiverType::UNKNOWN), fixed_settings(fixed_settings_), filter(filter_), receiving_gps_timestamps(false), autodetect_timer(service_), reconnect_timer(service_), liveness_timer(service_), good_sync(false), good_messages_count(0), bad_bytes_count(0), first_message(true), state(ParserState::RESYNC) {}
+BeastInput::BeastInput(boost::asio::io_service &service_, const Settings &fixed_settings_, const modes::Filter &filter_, std::chrono::milliseconds beast_liveness_interval_)
+    : receiver_type(ReceiverType::UNKNOWN), fixed_settings(fixed_settings_), filter(filter_), receiving_gps_timestamps(false), autodetect_timer(service_), reconnect_timer(service_), rc_liveness_timer(service_), beast_liveness_interval(beast_liveness_interval_), beast_liveness_timer(service_), good_sync(false), good_messages_count(0), bad_bytes_count(0), first_message(true), state(ParserState::RESYNC) {}
 
 void BeastInput::start() { try_to_connect(); }
 
@@ -56,16 +57,19 @@ void BeastInput::connection_established() {
     current_settings = Settings();
 
     autodetect_timer.cancel();
-    if (fixed_settings.radarcape.on())
+    if (fixed_settings.radarcape.on()) {
         receiver_type = ReceiverType::RADARCAPE;
-    else if (fixed_settings.radarcape.off())
+        reset_rc_liveness();
+    } else if (fixed_settings.radarcape.off()) {
         receiver_type = ReceiverType::BEAST;
-    else {
+        reset_beast_liveness();
+    } else {
         receiver_type = ReceiverType::UNKNOWN;
         autodetect_timer.expires_from_now(radarcape_detect_interval);
         autodetect_timer.async_wait([this, self](const boost::system::error_code &ec) {
             if (!ec) {
                 receiver_type = ReceiverType::BEAST;
+                reset_beast_liveness();
                 send_settings_message();
             }
         });
@@ -77,6 +81,8 @@ void BeastInput::connection_established() {
 void BeastInput::connection_failed() {
     good_sync = false;
     autodetect_timer.cancel();
+    rc_liveness_timer.cancel();
+    beast_liveness_timer.cancel();
 
     // schedule reconnect.
     auto self(shared_from_this());
@@ -262,6 +268,33 @@ void BeastInput::lost_sync() {
     state = ParserState::RESYNC;
 }
 
+void BeastInput::reset_rc_liveness() {
+    auto self(shared_from_this());
+    rc_liveness_timer.expires_from_now(radarcape_liveness_interval);
+    rc_liveness_timer.async_wait([this, self](const boost::system::error_code &ec) {
+        if (!ec) {
+            std::cerr << what() << ": no recent status messages received, reconnecting" << std::endl;
+            disconnect();
+            connection_failed();
+        }
+    });
+}
+
+void BeastInput::reset_beast_liveness() {
+    if (beast_liveness_interval.count() == 0)
+        return;
+
+    auto self(shared_from_this());
+    beast_liveness_timer.expires_from_now(beast_liveness_interval);
+    beast_liveness_timer.async_wait([this, self](const boost::system::error_code &ec) {
+        if (!ec) {
+            std::cerr << what() << ": no recent data received, reconnecting" << std::endl;
+            disconnect();
+            connection_failed();
+        }
+    });
+}
+
 void BeastInput::dispatch_message() {
     // monitor status messages for GPS timestamp bit
     // and for radarcape autodetection
@@ -270,18 +303,11 @@ void BeastInput::dispatch_message() {
         if (receiver_type != ReceiverType::RADARCAPE) {
             receiver_type = ReceiverType::RADARCAPE;
             autodetect_timer.cancel();
+            beast_liveness_timer.cancel();
             send_settings_message(); // for the g/G setting
         }
 
-        auto self(shared_from_this());
-        liveness_timer.expires_from_now(radarcape_liveness_interval);
-        liveness_timer.async_wait([this, self](const boost::system::error_code &ec) {
-            if (!ec) {
-                std::cerr << what() << ": no recent status messages received" << std::endl;
-                disconnect();
-                connection_failed();
-            }
-        });
+        reset_rc_liveness();
     }
 
     if (!can_dispatch())
@@ -291,6 +317,9 @@ void BeastInput::dispatch_message() {
         first_message = false;
         std::cerr << what() << ": connected to a " << (receiver_type == ReceiverType::RADARCAPE ? "Radarcape" : "Beast") << "-style receiver" << std::endl;
     }
+
+    if (receiver_type == ReceiverType::BEAST)
+        reset_beast_liveness();
 
     if (!message_notifier)
         return;
