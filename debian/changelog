@@ -1,8 +1,8 @@
-beast-splitter (11.1~alpha) UNRELEASED; urgency=medium
+beast-splitter (11.1) stable; urgency=medium
 
-  *In development 
+  * Change for Trixie support  
 
- -- Ziquan Wang <ziquan.wang@flightaware.com>  Wed, 22 Apr 2026 08:42:49 -0500
+ -- Ziquan Wang <ziquan.wang@flightaware.com>  Thu, 02 Jul 2026 10:16:22 -0500
 
 beast-splitter (10.2) stable; urgency=medium
 
